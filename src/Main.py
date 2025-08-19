@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb 25 17:46:35 2023
+Created on Sat Feb 25 17:46:35 2024
 
 @author: gustavo
 """
@@ -15,42 +15,22 @@ from time import sleep
 crear_carpetas=False; training=False; testing=False; scp=False; enfriar=False
 # crear_carpetas=True
 if not crear_carpetas:
-#     training=True
+    training=True
     testing=True
-    # scp=True
+    scp=True
 
-#enfriar=True
+# enfriar=True
 
 # =============================================================================
 # Indicar servidor, gpu y corridas
 # =============================================================================
-# servidor = 'archon' ;gpu='0'; Corridas=['1']
-# servidor = 'archon' ;gpu='0'; Corridas=['1','2'] #;gpu='1'; Corridas=['1','2']
-# servidor = 'mineria' ; gpu='0'; Corridas=['1','2']
-# servidor = 'fondecyt1' ; gpu='0'; Corridas=['1','2'] #;gpu='1'; Corridas=['1','2']
-# servidor = 'fondecyt2' ; gpu='0'; Corridas=['1','2'] ;gpu='1'; Corridas=['1','2']
 
-# servidor = 'archon' ;gpu='0'; Corridas=['3','4'] ;gpu='1'; Corridas=['3','4']
-# servidor = 'mineria' ; gpu='0'; Corridas=['3','4']
-# servidor = 'fondecyt1' ; gpu='0'; Corridas=['3','4'] #;gpu='1'; Corridas=['3','4']
-# servidor = 'fondecyt2' ; gpu='0'; Corridas=['3','4'] ;gpu='1'; Corridas=['3','4']
-
-# servidor = 'archon' ;gpu='0'; Corridas=['1','2','3'] #;gpu='1'; Corridas=['1','2','3']
-# servidor = 'mineria' ; gpu='0'; Corridas=['1','2','3','4']
-# servidor = 'zealot' ; gpu='0'; Corridas=['1','2','3'] ;gpu='1'; Corridas=['1','2','3','4']
+# servidor = 'mineria';  gpu='0'; Corridas=['1','2','3','4']
+# servidor = 'zealot'; gpu='0'; Corridas=['1','2','3','4']
 # servidor = 'fondecyt1' ; gpu='0'; Corridas=['1','2','3'] ;gpu='1'; Corridas=['1','2','3']
 # servidor = 'fondecyt2' ; gpu='0'; Corridas=['1','2','3'] ;gpu='1'; Corridas=['1','2','3']
 
-
-# servidor = 'mineria';  gpu='0'; Corridas=['1','2','3']
-servidor = 'mineria';  gpu='0'; Corridas=['1']
-# servidor = 'zealot'; gpu='1'; Corridas=['1','2','3']
-# servidor = 'tempest'; gpu='0'; Corridas=['1','2','3']
-# servidor = 'fondecyt1' ; gpu='0'; Corridas=['1','2','3'] ;gpu='1'; Corridas=['1','2','3']
-# servidor = 'fondecyt2' ; gpu='0'; Corridas=['1','2','3'] ;gpu='1'; Corridas=['1','2','3']
-
-# servidor = 'mineria'    ; gpu='0'; Corridas=['0']
-# servidor = 't15'    ; gpu='0'; Corridas=['0']
+servidor = 't15'    ; gpu='0'; Corridas=['1'] # local
 # servidor = 't15'    ; gpu='cpu'; Corridas=['0']
 for indice in range(len(Corridas)):
     Corridas[indice] = servidor+'_gpu'+gpu+'-'+Corridas[indice]
@@ -63,9 +43,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]=gpu
 # =============================================================================
 tasa_da = '0.0'
 umbral_vol_training = '1'
-# umbral_vol_validation = '0' # No es necesaria la variable, ya que debería ser 0
 batch_size='16'
-# batch_size='3'
 metric = 'Dice_metric'
 opt = 'Adam'
 red= 'Unet'
@@ -83,16 +61,16 @@ alpha_TL = '0.3' #;alpha_TL = 'nan'# alpha de Tversky loss
 beta_ASL = '2.0' #;beta_ASL = 'nan'# Asymmetric similarity loss
 w_SEL = '0.1' #;w_SEL = 'nan'# sensitivity-especifity loss
 p_assd = '1.0' ;p_assd = 'nan'# probabilidad para obtener cuantil de assd
-alpha_BS = '0.8'
+alpha_BS = '0.8' # para Boundary-sensitive loss
 beta_BS_LC = '0.9'
-wa_ABL = '1.0'
+wa_ABL = '1.0' # para Active boundary loss
 batch_loss = 'T' #;batch_loss = 'F'
-gamma_CBL = '2.0'
+gamma_CBL = '2.0' # para Conditional boundary loss
 
-umbral_cc = '0'
+umbral_cc = '0' # solo slides con lesiones >0
 
 parMD_weight = '1.0'
-parMD_pot = '2.0'
+parMD_pot = '2.0'# lambda parameter in the paper
 parMD_sq = '1'
 umbral_P_MDF = '150'
 parMD_quantil = '1.0'
@@ -103,23 +81,13 @@ patience = '30'
 # =============================================================================
 # Ciclo de entrenamiento
 # =============================================================================
-# for DS in ['ISBI2015','MSSEG2016','WMH2017']:
 # for DS in ['ISBI2015','MSSEG2016']:
 # for DS in ['MSSEG2016','ISBI2015']:
 for DS in ['MSSEG2016']:
 # for DS in ['ISBI2015']:
-# for DS in ['WMH2017']:
     for epocas in ['200']:
-        # patience = epocas
-        # start_es = epocas
         folds = DS+'_5folds'
-        # for loss in ['PDF_loss']:
-        # for loss in ['MD_loss']:
-        # for loss in ['MD_loss_B']:
-        for loss in ['MD_loss_C']:
-        
-        # for loss in ['MD_loss_ASSD']:
-        # for loss in ['MD_loss_ASSD_mean']:
+        for loss in ['MD_loss']:
         
         # for loss in ['GDL']:
         # for loss in ['Boundary_loss']:
@@ -129,12 +97,14 @@ for DS in ['MSSEG2016']:
             sc='A5GL11';canal='FLAIR';r='5';ady='1';ce='GL';par_ce='0.3'
             prototipo='prototipo_mediana';gamma_MDF='1.0';percentil='0.9'
             for parMD_weight in ['1.0']:
-                for parMD_pot in ['2.5']:
-                    for dist in ['5']:
+                
+                for parMD_pot in ['3.0']:
+                    # for dist in ['5','10','15']:
+                    for dist in ['10']:
+                        if DS=='MSSEG2016' and dist=='5' or DS=='ISBI2015' and (dist=='10' or dist=='15'):
+                            continue
                 # for parMD_pot in ['2.5','3.0']:
                 #     for dist in ['5','10','15']:
-                        # if dist=='10' and (parMD_pot=='0.5' or parMD_pot=='1.0') or (DS=='MSSEG2016' and dist=='15'):
-                        #         continue
                         print(f'DS:{DS}, dist:{dist} pot:{parMD_pot}')
                         lista_MDF = ['sc:'+sc,'canal:'+canal,'r:'+r,'ady:'+ady,'ce:'+ce,'par_ce:'+par_ce,'dist:'+dist,
                             'prototipo:'+prototipo,'gamma_MDF:'+gamma_MDF,'percentil:'+percentil,'umbral_cc:'+umbral_cc,

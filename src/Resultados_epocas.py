@@ -133,6 +133,9 @@ nombre_carpeta_principal = 'MSSEG2016_Unet_MD_loss_C_w1.0p2.5-A5GL11_r5a1pmGL0.3
 # nombre_carpeta_principal = 'ISBI2015_Unet_MD_loss_C_w1.0p0.5-A5GL11_r5a1pmGL0.3g1.0p0.9_FLAIR_d15u0-bmT_e200_b16_Adam_da0.0_mpT_es200-200_ut1'
 # nombre_carpeta_principal = 'ISBI2015_Unet_MD_loss_C_w1.0p1.5-A5GL11_r5a1pmGL0.3g1.0p0.9_FLAIR_d15u0-bmT_e200_b16_Adam_da0.0_mpT_es200-200_ut1'
 
+nombre_carpeta_principal = 'ISBI2015_Unet_MD_loss_C_w1.0p3.0-A5GL11_r5a1pmGL0.3g1.0p0.9_FLAIR_d5u0-bmT_e200_b16_Adam_da0.0_mpT_es40-30_ut1'
+
+nombre_carpeta_principal = 'MSSEG2016_Unet_MD_loss_C_w1.0p1.5-A5GL11_r5a1pmGL0.3g1.0p0.9_FLAIR_d10u0-bmT_e200_b16_Adam_da0.0_mpT_es40-30_ut1'
 print(nombre_carpeta_principal)
 print('-'*70)
 
@@ -244,8 +247,7 @@ print(f'#N={N}')
 print('validation-testing:')
 metricas = ['HD95', 'ASSD', 'TPR', 'PPV', 'F1', 'RVD','AUC_PR']
 # metricas = ['HD95', 'HD90', 'ASSD', 'TPR', 'PPV', 'F1', 'RVD','AUC_PR']
-# epoca = 200
-# for epoca in [180,200]:
+
 for epoca in [200]:
     s=''
     for metrica in metricas:
@@ -305,63 +307,6 @@ for llave in d_es:
     d_es[llave]={'mean':np.mean(d_es[llave],0), 'std':np.std(d_es[llave],0)}
 
 metricas = ['HD95_test', 'ASSD_test', 'TPR_test', 'PPV_test', 'F1_test', 'RVD_test','AUC_PR_test']
-# for epoca in [epoca_fin]:
-s=''
-for metrica in metricas:
-    media = str(round(d_es[metrica]['mean'],4)).ljust(6,'0')
-    std = str(round(d_es[metrica]['std'],4)).ljust(6,'0')
-    if metrica != metricas[-1]:
-        s+=media+'('+std+')'+' & '
-    else:
-        s+=media+'('+std+')'
-# print(f'{epoca} épocas:')
-m = ''
-for metrica in metricas:
-    m += ' '+metrica.ljust(15,' ')+'|'
-print('\n',m)
-print('-'*120)
-print(s)
-
-
-
-# ##########################
-start_es = 40
-paciencia = 30
-metricas = ['HD95_val', 'HD90_val', 'ASSD_val', 'TPR_val', 'PPV_val', 'F1_val', 'RVD_val','AUC_PR_val']
-metricas += ['HD95_test', 'HD90_test', 'ASSD_test', 'TPR_test', 'PPV_test', 'F1_test', 'RVD_test','AUC_PR_test']
-d_es = {}
-N = d_metricas_N['dice_test'].shape[0]
-# print(f'N dice_val:{N}')
-epocas = d_metricas_N['dice_val'].shape[1]# 200
-# print(f'epocas:{epocas}')
-# for n in range(d_metricas_N['dice_val'].shape[0]):
-for n in range(N):
-    # print(d_metricas_N['dice_val'][n])
-    maximo_f1_val = 0
-    contador = 0
-    epoca_fin = epocas
-    for epoca in range(1,d_metricas_N['dice_val'].shape[1]):
-        # print(epoca)
-        if epoca >= start_es:
-            contador += 1
-            f1_val = d_metricas_N['dice_test'][n][epoca]
-            # print(f'epoca:{epoca}, f1_val:{f1_val}')
-            if f1_val > maximo_f1_val:
-                maximo_f1_val = f1_val
-                contador = 0
-            if contador==paciencia:
-                epoca_fin = epoca
-                break
-    # print(f'epoca_fin:{epoca_fin}')
-    for metrica in metricas:
-        if metrica not in d_es:
-            d_es[metrica] = []
-        d_es[metrica].append(d_metricas_N[metrica][n][epoca_fin])
-
-for llave in d_es:
-    d_es[llave]={'mean':np.mean(d_es[llave],0), 'std':np.std(d_es[llave],0)}
-
-metricas = ['HD95_val', 'ASSD_val', 'TPR_val', 'PPV_val', 'F1_val', 'RVD_val','AUC_PR_val']
 # for epoca in [epoca_fin]:
 s=''
 for metrica in metricas:

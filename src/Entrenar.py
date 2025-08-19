@@ -32,16 +32,12 @@ def Get_s_umbral(S_theta, umbral, G, paciente): # Creo función para poder paral
     # =============================================================================
     # Métricas de surface-distances
     # =============================================================================
-    # d_mb = bbg.Metricas_borde(G, S, ['hd', 'hd95', 'assd', 'assd_orig', 'hd_orig', 'hd95_orig'])
     d_mb = bbg.Metricas_borde(G, S, ['hd', 'hd95', 'hd90', 'assd', 'assd95'])
     hd = round(d_mb['hd'], 8)
     hd95 = round(d_mb['hd95'], 8)
     hd90 = round(d_mb['hd90'], 8)
     assd = round(d_mb['assd'], 8)
     assd95 = round(d_mb['assd95'], 8)
-    # hd_orig = round(d_mb['hd_orig'], 8)
-    # hd95_orig = round(d_mb['hd95_orig'], 8)
-    # assd_orig = round(d_mb['assd_orig'], 8)
     # =============================================================================
     # Métricas overlapping
     # =============================================================================
@@ -183,13 +179,9 @@ class ImageDataset(torch.utils.data.Dataset):
                 return image, target, mdf, paciente+'-'+str(slide)
             else:
                 return image, target, mdf#, target_PDF
-            
-            # return image, target, mdf, mascara_dist
         elif self.G_PDF:
             target_SDF, ind = ModuloA.SDF(target_PDF.copy(), return_indices=True)
             target_PDF, ind = ModuloA.PDF(target_PDF, return_indices=True)
-            # mascara = target_SDF<=0
-            # target_PDF[target_SDF>0]=0
             target_PDF[target_SDF<=0]=0
             return image, target, target_PDF
         else:
@@ -206,12 +198,10 @@ def SCP():
         if '.txt' in nombre_archivo:
             os.system('cp '+path_carpeta_ce+'/'+nombre_archivo +
                       ' '+path_carpeta_ce_scp+'/'+nombre_archivo)
-    # llamada = 'sshpass -p infpucv2021 scp -r '+path_carpeta_ce_scp + \
-    #     ' gulloa@158.251.93.14:'+path_carpeta_principal.replace('gulloap','gulloa').replace('workspace','home/gulloa/2024')
-    llamada = 'sshpass -p infpucv2022 scp -r '+path_carpeta_ce_scp + \
-        ' gulloa@158.251.93.8:'+path_carpeta_principal.replace('gulloap','gulloa').replace('workspace','home/gulloa/2024')
+    llamada = 'scp -r '+path_carpeta_ce_scp + ' user@xxx.xxx.xx.x:'+path_carpeta_principal
     print(llamada)
-    if os.uname()[1] != 'mineria':
+    if os.uname()[1] != 'mineria' and os.uname()[1] != 'f15':
+        # 'mineria' = central_server
         os.system(llamada)
 
 def Get_parametros_entrada(argv):
@@ -255,12 +245,10 @@ def Training():
     print('Training():')
     C, H, W = input_dim_2D
     print(f'input_dim_2D:{(input_dim_2D)}, H:{H}, W:{W}, C:{C}')
-    if d['loss']=='CBL':# Unet con retornos extras a demás de predicción
+    if d['loss']=='CBL':# Unet con retornos extras además de predicción
         model = getattr(Modelos,'Unet_CBL')(C, 2).to(device)
     else:
         model = getattr(Modelos,d['red'])(C, 2).to(device)
-        # p = '/'.join(os.getcwd().split('/')[:-1])
-        # model = torch.load(os.path.join(p,'k0_e25.pth'))
         
     G_DTM = False; G_SDF = False; GTB=False; CBL=False; MDF=False
     G_PDF = False
@@ -280,8 +268,6 @@ def Training():
     elif 'MD_loss' in d['loss']:
         MDF = True
         return_slide = False
-        if d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H':
-            return_slide = True
     
     print(f'\ndata_path:{data_path}')
     print(f'pacientes_train:{pacientes_train}')
@@ -312,7 +298,6 @@ def Training():
         if paciente not in d_dataloader:
             d_dataloader[paciente] = DataLoader(ImageDataset(data_path, [paciente], tipo='eval'), batch_size=batch_size, shuffle=False)
     d_dataloader_trainvaltest = {}# Retorna todas las slides del paciente ordenadas
-    # batch_size_dtrain=1
     for paciente in pacientes_train +pacientes_val+pacientes_test:# Crear un dataloader para cada paciente con todas las slides
         d_dataloader_trainvaltest[paciente] = DataLoader(ImageDataset(data_path, [paciente], tipo='eval',MDF=MDF, return_slide=True), batch_size=batch_size_dtrain, shuffle=False)
     
@@ -326,35 +311,15 @@ def Training():
     freq_metricas = 1
     
     flag_es = True
-    flag_es_test = True
     contador_epocas_patience = 0
     promedio_val_F1_maximo = 0
-    contador_epocas_patience_test = 0
-    promedio_val_F1_maximo_test = 0
     
     for epoca in range(1, epocas+1):
-        # if epoca>=2:
-        #     break
+        if epoca>=10:
+            break
         
         tiempo_epoca = time()
         print(f'\népoca {epoca}',' /', nombre_carpeta_principal,'/',nombre_carpeta_ce,'/ k:',k)
-        
-        if (d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H') and epoca >= umbral_P_MDF:
-            tiempo_pred_bool = time()
-            '''Después de cada época, obtener diccionario con predicciones_PRED para pacientes_train
-            con el objetivo de utilizarlas en el cálculo de MDF'''
-            print(f'batch_size_dtrain:{batch_size_dtrain}')
-            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                d_pacientes_pred_bool={}
-                for paciente in pacientes_train[:] +pacientes_val+pacientes_test:
-                    paciente_pred = Obtener_paciente_pred(paciente,d_dataloader_trainvaltest,model)
-                    d_pacientes_pred_bool[paciente]=paciente_pred
-            # np.savez('d_pacientes_pred_bool_'+d['DS']+'_Paralelo',**d_pacientes_pred_bool)
-            
-            # p = '/'.join(os.getcwd().split('/')[:-1])
-            # model = torch.load(os.path.join(p,'k0_e25.pth'))
-            # d_pacientes_pred_bool=dict(np.load(os.path.join(p,'d_pacientes_pred_bool_'+d['DS']+'_Paralelo'+'.npz')))
-            print(f'tiempo_pred_bool:{time()-tiempo_pred_bool}sg')
         
         alpha = max(round(1 - (epoca-1)/epocas, 4), 0.01)# Como en los papers Boundary loss y ABL
         # alpha = 0.5 ###################
@@ -383,107 +348,45 @@ def Training():
             elif d['loss'] == 'CBL':
                 X, Y, CBL = tensores
                 CBL = CBL.to(device)
-            elif d['loss']=='MD_loss' or d['loss']=='MD_loss_B' or d['loss']=='MD_loss_C' or 'MD_loss_ASSD' in d['loss']:
+            elif d['loss']=='MD_loss':
                 X, Y, Y_MDF = tensores
-                Y_MDF = Y_MDF.to(device)
-            elif d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H':
-                X, Y, Y_MDF, INFO = tensores
                 Y_MDF = Y_MDF.to(device)
             else: # Dice, FTL, ASD, BCE, ... que solo necesitan entrada X y target Y
                 X, Y = tensores
             X, Y = X.to(device), Y.to(device)
-            # if True:
-            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                # print(f'with: X:{X.shape}, Y:{Y.shape}')
-                if d['loss'] == 'CBL':
-                    pred, bottle_neck, last_conv = model(X)
-                    # print(f'pred:{pred.shape}, bottle_neck:{bottle_neck.shape} {bottle_neck.dtype}')#', last_conv:{last_conv.shape}')
-                else:
-                    pred = model(X)
-                if d['loss'] == 'HD_loss':
-                    pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
-                    pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
-                    loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
-                elif d['loss'] == 'Boundary_loss':
-                    loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
-                elif d['loss'] == 'PDF_loss':
-                    loss = loss_function(pred, Y, Y_PDF, alpha, batch_loss)# para PDF_loss
-                elif d['loss'] == 'ABL':
-                    loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
-                elif d['loss'] == 'BSLoss':
-                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
-                elif d['loss'] == 'BSL_LC':
-                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
-                elif d['loss'] == 'FT_loss':
-                    loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
-                elif d['loss'] == 'CBL':
-                    loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
-                
-                elif d['loss']=='MD_loss':
-                    loss = loss_function(pred, Y, Y_MDF, alpha, batch_loss)
-                
-                elif d['loss']=='MD_loss_ASSD':
-                    # print('Calcular ASSD_new:')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                
-                elif d['loss']=='MD_loss_ASSD_mean':
-                    # print('Calcular ASSD_mean_new:')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_quantil)
-                
-                elif d['loss']=='MD_loss_B':
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_sq)
-                
-                elif d['loss']=='MD_loss_C':
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                
-                elif d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H':
-                    # =============================================================================
-                    #   Actualizar Y_MDF
-                    # =============================================================================
-                    if epoca >= umbral_P_MDF:
-                        prednp = pred.detach().cpu().numpy()
-                        prednp[prednp<=0.5]=0;prednp[prednp>0.5]=1
-                        prednp = prednp.astype(np.bool_)
-                        # Ynp = np.bool_(Y.detach().cpu().numpy())
-                        # tiempo_mdfs_batch=time()
-                        resultados = []
-                        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                            functions = []
-                            for i in range(len(INFO))[:]:
-                                paciente, slide = INFO[i].split('-')
-                                slide = int(slide)
-                                pred_slide = prednp[i,1]# Se pudo utilizar antes de P_MDF_function en el .submit
-                                if ady==0:
-                                    AC_inputMDF = dPAC[paciente][:,slide:slide+1]#Está bien, evita agregar exp_dim en axis=1
-                                    P_inputMDF = d_pacientes_pred_bool[paciente][slide]
-                                elif ady==1:
-                                    if slide==0 or slide==159:
-                                        P_inputMDF = np.zeros((3, 160, 192),dtype=np.bool_)
-                                        AC_inputMDF = np.zeros((8, 3, 160, 192),dtype=np.float32)# Da lo mismo el shape
-                                        pred_slide = np.zeros_like(pred_slide)
-                                    else:
-                                        AC_inputMDF = dPAC[paciente][:,slide-1:slide+2]
-                                        P_inputMDF = d_pacientes_pred_bool[paciente][slide-1:slide+2,0]#0 evita squeeze
-                                # print(f'P_inputMDF:{P_inputMDF.shape} {P_inputMDF.dtype}, AC_inputMDF:{AC_inputMDF.shape} {AC_inputMDF.dtype}, slide:{slide}')
-                                P_inputMDF[ady]=pred_slide
-                                function = executor.submit(P_MDF_function, P_inputMDF,AC_inputMDF,i)
-                                functions.append(function)
-                            for function in as_completed(functions):
-                                resultados.append(function.result())
-                        resultados.sort()
-                        # print(f'tiempo_mdfs_batch: {time()-tiempo_mdfs_batch}')
-                        P_MDF = []
-                        for i,P_mdf in resultados:
-                            P_MDF.append(P_mdf)
-                        P_MDFnp = np.array(P_MDF)#Podría llamarse igual
-                        P_MDF = torch.from_numpy(P_MDFnp)
-                        P_MDF = P_MDF.to(device)
-                    else: # Si no ha pasado el umbral no es necesario calcular P_MDF
-                        P_MDF=None
-                        # print(f'es none: {np.}')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, P_MDF, parMD_weight, parMD_pot, parMD_sq)
-                else: # Dice, FTL, ASD, BCE, GDL,...
-                    loss = loss_function(pred, Y, batch_loss)
+            if True:
+                with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
+                    # print(f'with: X:{X.shape}, Y:{Y.shape}')
+                    if d['loss'] == 'CBL':
+                        pred, bottle_neck, last_conv = model(X)
+                        # print(f'pred:{pred.shape}, bottle_neck:{bottle_neck.shape} {bottle_neck.dtype}')#', last_conv:{last_conv.shape}')
+                    else:
+                        pred = model(X)
+                    if d['loss'] == 'HD_loss':
+                        pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
+                        pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
+                        loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
+                    elif d['loss'] == 'Boundary_loss':
+                        loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
+                    elif d['loss'] == 'PDF_loss':
+                        loss = loss_function(pred, Y, Y_PDF, alpha, batch_loss)# para PDF_loss
+                    elif d['loss'] == 'ABL':
+                        loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
+                    elif d['loss'] == 'BSLoss':
+                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
+                    elif d['loss'] == 'BSL_LC':
+                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
+                    elif d['loss'] == 'FT_loss':
+                        loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
+                    elif d['loss'] == 'CBL':
+                        loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
+                    
+                    elif d['loss']=='MD_loss':
+                        loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
+                    
+                    else: # Dice, FTL, ASD, BCE, GDL,...
+                        loss = loss_function(pred, Y, batch_loss)
+            
             
             # break
             if torch.isnan(loss):# Filtrar errores utilizando BSL_LC y CBL, sobretodo en DS WMH2017
@@ -500,7 +403,7 @@ def Training():
             # optimizer.step()
             # optimizer.zero_grad()
             
-            # Backpropagation with mixed precision
+            # # Backpropagation with mixed precision
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -538,104 +441,44 @@ def Training():
             elif d['loss'] == 'CBL':
                 X, Y, CBL = tensores
                 CBL = CBL.to(device)
-            elif d['loss']=='MD_loss' or d['loss']=='MD_loss_B' or d['loss']=='MD_loss_C' or 'MD_loss_ASSD' in d['loss']:
+            elif d['loss']=='MD_loss':
                 X, Y, Y_MDF = tensores
-                Y_MDF = Y_MDF.to(device)
-            elif 'MD_loss_G' in d['loss'] or d['loss']=='MD_loss_H':
-                X, Y, Y_MDF, INFO = tensores
                 Y_MDF = Y_MDF.to(device)
             else: # Dice, FTL, ASD, BCE, ... que solo necesitan entrada X y target Y
                 X, Y = tensores
             X, Y = X.to(device), Y.to(device)
             
-            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                if d['loss'] == 'CBL':
-                    pred, bottle_neck, last_conv = model(X)
-                else:
-                    pred = model(X)
-                
-                if d['loss'] == 'HD_loss':
-                    pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
-                    pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
-                    loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
-                elif d['loss'] == 'Boundary_loss':
-                    loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
-                elif d['loss'] == 'ABL':
-                    loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
-                elif d['loss'] == 'BSLoss':
-                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
-                elif d['loss'] == 'BSL_LC':
-                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
-                elif d['loss'] == 'FT_loss':
-                    loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
-                elif d['loss'] == 'CBL':
-                    loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
-                
-                elif d['loss']=='MD_loss':
-                    loss = loss_function(pred, Y, Y_MDF, alpha, batch_loss)
-                
-                elif d['loss']=='MD_loss_ASSD':
-                    # print('Calcular ASSD_new:')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                
-                elif d['loss']=='MD_loss_ASSD_mean':
-                    # print('Calcular ASSD_mean_new:')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_quantil)
-                
-                elif d['loss']=='MD_loss_B':
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_sq)
-                
-                elif d['loss']=='MD_loss_C':
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                
-                elif d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H':
-                    # =============================================================================
-                    #   Actualizar Y_MDF
-                    # =============================================================================
-                    if epoca >= umbral_P_MDF:
-                        prednp = pred.detach().cpu().numpy()
-                        prednp[prednp<=0.5]=0;prednp[prednp>0.5]=1
-                        prednp = prednp.astype(np.bool_)
-                        # Ynp = np.bool_(Y.detach().cpu().numpy())
-                        # tiempo_mdfs_batch=time()
-                        resultados = []
-                        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                            functions = []
-                            for i in range(len(INFO))[:]:
-                                paciente, slide = INFO[i].split('-')
-                                slide = int(slide)
-                                pred_slide = prednp[i,1]# Se pudo utilizar antes de P_MDF_function en el .submit
-                                if ady==0:
-                                    AC_inputMDF = dPAC[paciente][:,slide:slide+1]#Está bien, evita agregar exp_dim en axis=1
-                                    P_inputMDF = d_pacientes_pred_bool[paciente][slide]
-                                elif ady==1:
-                                    if slide==0 or slide==159:
-                                        P_inputMDF = np.zeros((3, 160, 192),dtype=np.bool_)
-                                        AC_inputMDF = np.zeros((8, 3, 160, 192),dtype=np.float32)# Da lo mismo el shape
-                                        pred_slide = np.zeros_like(pred_slide)
-                                    else:
-                                        AC_inputMDF = dPAC[paciente][:,slide-1:slide+2]
-                                        P_inputMDF = d_pacientes_pred_bool[paciente][slide-1:slide+2,0]#0 evita squeeze
-                                # print(f'P_inputMDF:{P_inputMDF.shape} {P_inputMDF.dtype}, AC_inputMDF:{AC_inputMDF.shape} {AC_inputMDF.dtype}, slide:{slide}')
-                                P_inputMDF[ady]=pred_slide
-                                function = executor.submit(P_MDF_function, P_inputMDF,AC_inputMDF,i)
-                                functions.append(function)
-                            for function in as_completed(functions):
-                                resultados.append(function.result())
-                        resultados.sort()
-                        # print(f'tiempo_mdfs_batch: {time()-tiempo_mdfs_batch}')
-                        P_MDF = []
-                        for i,P_mdf in resultados:
-                            P_MDF.append(P_mdf)
-                        P_MDFnp = np.array(P_MDF)#Podría llamarse igual
-                        P_MDF = torch.from_numpy(P_MDFnp)
-                        P_MDF = P_MDF.to(device)
-                    else: # Si no ha pasado el umbral no es necesario calcular P_MDF
-                        P_MDF=None
-                        # print(f'es none: {np.}')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, P_MDF, parMD_weight, parMD_pot, parMD_sq)
-                else: # Dice, FTL, ASD, BCE, GDL,...
-                    loss = loss_function(pred, Y, batch_loss)
+            if True:
+                with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
+                    if d['loss'] == 'CBL':
+                        pred, bottle_neck, last_conv = model(X)
+                    else:
+                        pred = model(X)
+                    
+                    if d['loss'] == 'HD_loss':
+                        pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
+                        pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
+                        loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
+                    elif d['loss'] == 'Boundary_loss':
+                        loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
+                    elif d['loss'] == 'ABL':
+                        loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
+                    elif d['loss'] == 'BSLoss':
+                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
+                    elif d['loss'] == 'BSL_LC':
+                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
+                    elif d['loss'] == 'FT_loss':
+                        loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
+                    elif d['loss'] == 'CBL':
+                        loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
+                    
+                    elif d['loss']=='MD_loss':
+                        loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
+                    
+                    else: # Dice, FTL, ASD, BCE, GDL,...
+                        loss = loss_function(pred, Y, batch_loss)
+
+            
             lista_loss_val.append(loss.item())
             # break###
             
@@ -734,104 +577,44 @@ def Training():
             elif d['loss'] == 'CBL':
                 X, Y, CBL = tensores
                 CBL = CBL.to(device)
-            elif d['loss']=='MD_loss' or d['loss']=='MD_loss_B' or d['loss']=='MD_loss_C' or 'MD_loss_ASSD' in d['loss']:
+            elif d['loss']=='MD_loss':
                 X, Y, Y_MDF = tensores
-                Y_MDF = Y_MDF.to(device)
-            elif 'MD_loss_G' in d['loss'] or d['loss']=='MD_loss_H':
-                X, Y, Y_MDF, INFO = tensores
                 Y_MDF = Y_MDF.to(device)
             else: # Dice, FTL, ASD, BCE, ... que solo necesitan entrada X y target Y
                 X, Y = tensores
             X, Y = X.to(device), Y.to(device)
             
-            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                if d['loss'] == 'CBL':
-                    pred, bottle_neck, last_conv = model(X)
-                else:
-                    pred = model(X)
-                
-                if d['loss'] == 'HD_loss':
-                    pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
-                    pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
-                    loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
-                elif d['loss'] == 'Boundary_loss':
-                    loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
-                elif d['loss'] == 'ABL':
-                    loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
-                elif d['loss'] == 'BSLoss':
-                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
-                elif d['loss'] == 'BSL_LC':
-                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
-                elif d['loss'] == 'FT_loss':
-                    loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
-                elif d['loss'] == 'CBL':
-                    loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
-                
-                elif d['loss']=='MD_loss':
-                    loss = loss_function(pred, Y, Y_MDF, alpha, batch_loss)
-                
-                elif d['loss']=='MD_loss_ASSD':
-                    # print('Calcular ASSD_new:')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                
-                elif d['loss']=='MD_loss_ASSD_mean':
-                    # print('Calcular ASSD_mean_new:')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_quantil)
-                
-                elif d['loss']=='MD_loss_B':
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_sq)
-                
-                elif d['loss']=='MD_loss_C':
-                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                
-                elif d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H':
-                    # =============================================================================
-                    #   Actualizar Y_MDF
-                    # =============================================================================
-                    if epoca >= umbral_P_MDF:
-                        prednp = pred.detach().cpu().numpy()
-                        prednp[prednp<=0.5]=0;prednp[prednp>0.5]=1
-                        prednp = prednp.astype(np.bool_)
-                        # Ynp = np.bool_(Y.detach().cpu().numpy())
-                        # tiempo_mdfs_batch=time()
-                        resultados = []
-                        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                            functions = []
-                            for i in range(len(INFO))[:]:
-                                paciente, slide = INFO[i].split('-')
-                                slide = int(slide)
-                                pred_slide = prednp[i,1]# Se pudo utilizar antes de P_MDF_function en el .submit
-                                if ady==0:
-                                    AC_inputMDF = dPAC[paciente][:,slide:slide+1]#Está bien, evita agregar exp_dim en axis=1
-                                    P_inputMDF = d_pacientes_pred_bool[paciente][slide]
-                                elif ady==1:
-                                    if slide==0 or slide==159:
-                                        P_inputMDF = np.zeros((3, 160, 192),dtype=np.bool_)
-                                        AC_inputMDF = np.zeros((8, 3, 160, 192),dtype=np.float32)# Da lo mismo el shape
-                                        pred_slide = np.zeros_like(pred_slide)
-                                    else:
-                                        AC_inputMDF = dPAC[paciente][:,slide-1:slide+2]
-                                        P_inputMDF = d_pacientes_pred_bool[paciente][slide-1:slide+2,0]#0 evita squeeze
-                                # print(f'P_inputMDF:{P_inputMDF.shape} {P_inputMDF.dtype}, AC_inputMDF:{AC_inputMDF.shape} {AC_inputMDF.dtype}, slide:{slide}')
-                                P_inputMDF[ady]=pred_slide
-                                function = executor.submit(P_MDF_function, P_inputMDF,AC_inputMDF,i)
-                                functions.append(function)
-                            for function in as_completed(functions):
-                                resultados.append(function.result())
-                        resultados.sort()
-                        # print(f'tiempo_mdfs_batch: {time()-tiempo_mdfs_batch}')
-                        P_MDF = []
-                        for i,P_mdf in resultados:
-                            P_MDF.append(P_mdf)
-                        P_MDFnp = np.array(P_MDF)#Podría llamarse igual
-                        P_MDF = torch.from_numpy(P_MDFnp)
-                        P_MDF = P_MDF.to(device)
-                    else: # Si no ha pasado el umbral no es necesario calcular P_MDF
-                        P_MDF=None
-                        # print(f'es none: {np.}')
-                    loss = loss_function(pred, Y, alpha, Y_MDF, P_MDF, parMD_weight, parMD_pot, parMD_sq)
-                else: # Dice, FTL, ASD, BCE, GDL,...
-                    loss = loss_function(pred, Y, batch_loss)
+            if True:
+                with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
+                    if d['loss'] == 'CBL':
+                        pred, bottle_neck, last_conv = model(X)
+                    else:
+                        pred = model(X)
+                    
+                    if d['loss'] == 'HD_loss':
+                        pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
+                        pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
+                        loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
+                    elif d['loss'] == 'Boundary_loss':
+                        loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
+                    elif d['loss'] == 'ABL':
+                        loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
+                    elif d['loss'] == 'BSLoss':
+                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
+                    elif d['loss'] == 'BSL_LC':
+                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
+                    elif d['loss'] == 'FT_loss':
+                        loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
+                    elif d['loss'] == 'CBL':
+                        loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
+                    
+                    elif d['loss']=='MD_loss':
+                        loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
+                    
+                    else: # Dice, FTL, ASD, BCE, GDL,...
+                        loss = loss_function(pred, Y, batch_loss)
+            
+            
             lista_loss_val.append(loss.item())
             # break###
         
@@ -912,7 +695,6 @@ def Training():
         epocas_completadas = epoca
         
         if d['ES']=='T' and epoca >= start_es and flag_es:
-        # if d['ES']=='T' and epoca >= 40 and flag_es:
             # print('Validation-Earling Stopping...')
             val_F1_promedio = d_epocas['dice_val'][-1]
             contador_epocas_patience+=1
@@ -921,7 +703,6 @@ def Training():
                 promedio_val_F1_maximo = val_F1_promedio
                 contador_epocas_patience = 0
             if contador_epocas_patience==patience:
-            # if contador_epocas_patience==30:
                 print('contador_epocas_patience=',contador_epocas_patience, epoca)
                 print('Terminar entrenamiento--'*10)
                 # nombre_modelo_es = 'k'+str(k)+'_'+str(epoca)+'.pth'
@@ -930,23 +711,6 @@ def Training():
                 flag_es = False
                 break
         
-        if d['ES']=='T' and epoca >= start_es and flag_es_test:
-        # if d['ES']=='T' and epoca >= 40 and flag_es_test:
-            val_F1_promedio_test = d_epocas['dice_test'][-1]
-            contador_epocas_patience_test+=1
-            # print('contador_epocas_patience_test=',contador_epocas_patience_test, epoca)
-            if val_F1_promedio_test > promedio_val_F1_maximo_test:
-                promedio_val_F1_maximo_test = val_F1_promedio_test
-                contador_epocas_patience_test = 0
-            if contador_epocas_patience_test==patience:
-            # if contador_epocas_patience_test==30:
-                print('contador_epocas_patience_test=',contador_epocas_patience_test, epoca)
-                print('Terminar entrenamiento--'*10)
-                # nombre_modelo_es_test = 'k'+str(k)+'_'+str(epoca)+'.pth'
-                # nombre_modelo_es_test = 'k'+str(k)+'_es_test_'+str(epoca)+'.pth'
-                # torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo_es_test))
-                flag_es_test = False
-        
         epocas_completadas = epoca
         print(f'tiempo_epoca:{round(time()-tiempo_epoca,2)}[sg]')
 # =============================================================================
@@ -954,7 +718,7 @@ def Training():
 # =============================================================================
 #   Guardar modelo e historial del entrenamiento
 # =============================================================================
-    # torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo))
+    torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo))
     # =========================================================================
     t_fin = time()
     # print('d_epocas:',d_epocas)
@@ -1002,8 +766,7 @@ def Testing():
     # =============================================================================
     # Archivo de texto
     # =============================================================================
-    # nombre_at = 'testing.txt'
-    nombre_at = 'validation-testing.txt'
+    nombre_at = 'testing.txt'
     if nombre_at not in os.listdir(path_carpeta_ce):
         archivo_testing = open(path_carpeta_ce+'/'+nombre_at, 'w')
     else:
@@ -1015,15 +778,9 @@ def Testing():
             d_eval_dataloader[paciente] = DataLoader(ImageDataset(data_path, [paciente], tipo='eval'), batch_size=batch_size, shuffle=False)
     print(d_eval_dataloader)
     
-    d_valtest_dataloader = {}
-    for paciente in pacientes_val+pacientes_test:# Crear un dataloader para cada paciente con todas las slides
-        if paciente not in d_valtest_dataloader:
-            d_valtest_dataloader[paciente] = DataLoader(ImageDataset(data_path, [paciente], tipo='eval'), batch_size=batch_size, shuffle=False)
-    
     print('testing...')
-    print('validation-testing...')
     model.eval()
-    for paciente in pacientes_val[:]+pacientes_test[:]:
+    for paciente in pacientes_test[:]:
         t_1vol = time()
         print(paciente)
         
@@ -1031,8 +788,8 @@ def Testing():
         Y_paciente = np.zeros((160,2,160,192),dtype=np.float32)
         ini = 0
         fin = batch_size
-        for X, Y in d_valtest_dataloader[paciente]:
-        # for X, Y in d_eval_dataloader[paciente]:
+        # for X, Y in d_valtest_dataloader[paciente]:
+        for X, Y in d_eval_dataloader[paciente]:
             X, Y = X.to(device), Y.to(device)
             
             if d['loss'] == 'CBL':
@@ -1100,11 +857,7 @@ def mdf_paciente(paciente):
 # =============================================================================
 
 d = Get_parametros_entrada(sys.argv)
-# np.savez('d',**d)
 
-# d = dict(np.load('d.npz'))
-# for llave in d:
-#     d[llave]=str(d[llave])
 # =============================================================================
 device = (
     "cuda"
@@ -1133,11 +886,9 @@ metrics.append(metric)
 print('loss_function:',loss_function,'metrics:',metrics)
 # print(loss_function, metrics)
 
-size_img3D_target = getattr(bbg,d['DS']+'_input_dim_3D')# Ya no es necesario. ya no se corta el volumen.
 input_dim_2D = getattr(bbg,d['DS']+'_input_dim_2D')
-# nombre_modelo = 'k'+str(k)+'.keras'
 nombre_modelo = 'k'+str(k)+'.pth'
-print('input_dim_2D:',input_dim_2D,'size_img3D_target:',size_img3D_target)
+print('input_dim_2D:',input_dim_2D)
 
 print('os.uname()[1]:',os.uname()[1])
 if os.uname()[1] == 'f15':
@@ -1227,11 +978,7 @@ elif 'MD_loss' in d['loss']:
     for feature in listaCaracteristicas_utilizada:
         print(f'feature: {feature}')
     
-    if d['loss']=='MD_loss_B':
-        string_loss = d['loss']+'_w'+str(parMD_weight)+'p'+str(parMD_pot)+'sq'+str(parMD_sq)+'-'+carpeta_MDF[4:]+'-'
-    elif d['loss']=='MD_loss_G' or d['loss']=='MD_loss_H':
-        string_loss = d['loss']+'_uPmdf'+str(umbral_P_MDF)+'_w'+str(parMD_weight)+'p'+str(parMD_pot)+'sq'+str(parMD_sq)+'-'+carpeta_MDF[4:]+'-'
-    elif 'MD_loss_ASSD' in d['loss'] or d['loss']=='MD_loss_C':
+    if d['loss']=='MD_loss':
         string_loss = d['loss']+'_w'+str(parMD_weight)+'p'+str(parMD_pot)+'-'+carpeta_MDF[4:]+'-'
     else:
         string_loss = d['loss']+'-'+carpeta_MDF[4:]+'-'
@@ -1276,19 +1023,21 @@ elif d['tarea'] == 'training':
         tiempo_MDFs = time()
         nombre_dMDF='dMDF_'+carpeta_MDF[4:]+'_'+d['DS']
         print(f'nombre_dMDF:{nombre_dMDF}')
-        if os.uname()[1]== 'f15' or os.uname()[1]=='mineria' or os.uname()[1]=='zealot' or os.uname()[1]=='tempest':
+        if os.uname()[1]== 'f15' or os.uname()[1]=='mineria' or os.uname()[1]=='zealot':
             max_workers=None
         elif os.uname()[1]=='fondecyt1' or os.uname()[1]=='fondecyt2':
             max_workers=4
         print(f'max_workers:{max_workers}')
         
         # =============================================================================
-        # flag_cargar_dMDF=True
-        flag_cargar_dMDF=False
+        flag_cargar_dMDF=True
+        # flag_cargar_dMDF=False
         # =============================================================================
         if flag_cargar_dMDF:
-            p = '/'.join(os.getcwd().split('/')[:-1])
-            dMDF=dict(np.load(os.path.join(p,nombre_dMDF+'.npz')))
+            # p = '/'.join(os.getcwd().split('/')[:-1])
+            # dMDF=dict(np.load(os.path.join(p,nombre_dMDF+'.npz')))
+            D2='/media/gustavo/Disco_2/pytorch/2025/MDF_Dinamico/'
+            dMDF=dict(np.load(os.path.join(D2,nombre_dMDF+'.npz')))
         else:
             resultados = []
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
@@ -1302,7 +1051,7 @@ elif d['tarea'] == 'training':
             dMDF={}# {paciente: mdf}
             for paciente, mdf in resultados:
                 dMDF[paciente]=mdf
-            ###np.savez(nombre_dMDF,**dMDF)
+            ### np.savez(nombre_dMDF,**dMDF)
         
         print(f'tiempo_MDFs:{round(time()-tiempo_MDFs,2)}[sg]')
         # =============================================================================

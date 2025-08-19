@@ -10,15 +10,11 @@ import torch
 from torch import nn
 import cv2
 import numpy as np
-import ModuloA
 # from torch.nn.modules.loss import _Loss
 # import lovasz_losses as L
-# eps=1e-5
-from skimage import morphology
-import Biblioteca_General as bbg
+# from skimage import morphology
 
 eps = 1e-7
-# smooth = 1
 
 # P y G tienen 2 mapas de características (N,2,H,W), uno para la clase background y uno para la clase foreground
 def Matriz_confusion_2MC(P, G, batch_loss=True):# batch=True para cada ejemplo del batch por separado
@@ -72,10 +68,10 @@ class BCE_loss(nn.Module):
         super(BCE_loss, self).__init__()
 
     def forward(self, y_pred, y_true, batch_loss=True):
-        '''
-        El promedio de los promedios de las filas es igual al promedio de todo...,
-        por tanto, no es necesario generar una pérdida por cada ejemplo del batch
-        '''
+        # '''
+        # El promedio de los promedios de las filas es igual al promedio de todo...,
+        # por tanto, no es necesario generar una pérdida por cada ejemplo del batch
+        # '''
         # print('BCE:')
         # N = len(y_true) # batch size
         Y0 = y_true[:,0]*torch.log(torch.clamp(y_pred[:,0], min=eps, max=1))  # FP
@@ -152,77 +148,12 @@ class Boundary_loss(nn.Module):
         # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
         return torch.mean(loss)
 
-'''
-- Considerar solo los pixeles a no más de dist[mm] de las lesiones, incluyendo todos los pixeles lesión: esto debería quitar
-    atención a los FP que son mayoría
-- Estimar ASSM y agregarlo como otro término
-- Calcular MDF de y_pred, la idea es ponderar más los pixeles difíciles, es decir los FP y FN que se parezcan más a la otra
-    clase de acuerdo a la distancia de Mahalanobis o MDF modificada (diseñar)
-'''
 class MD_loss(nn.Module):
-    '''
-    - Settiar a 0 todo el G_MDF cuando no hayan pixeles lesión (en lugar de NAN)
-    '''
-    def __init__(self):
-        super(MD_loss, self).__init__()
-    
-    def forward(self, y_pred, y_true, G_mdf, alpha, batch=True):
-        # print('MDF_losssss:')
-        # print(f'y_pred:{y_pred.shape} {y_pred.dtype}, y_true:{y_true.shape} {y_true.dtype}, G_mdf:{G_mdf.shape} {G_mdf.dtype}')
-        # print(f'y_true[:,0]:{torch.sum(y_true[:,0],axis=(1,2))}')
-        # print(f'y_true[:,1]:{torch.sum(y_true[:,1],axis=(1,2))}')
-        # print(f'DL: G_mdf:{torch.mean(G_mdf)} {torch.mean(G_mdf,axis=(1,2))}')
-        # for 
-        N, C, H, W = y_true.shape
-        # tn, fp, fn, tp = Matriz_confusion_2MC(y_pred, y_true, batch)
-        # dice = Dice_metric(tn, fp, fn, tp)
-        # dice_loss = 1-dice
-        
-        gdice = Generalized_dice_metric(y_pred, y_true)
-        gdice_loss = 1-gdice
-        
-        producto_FP = y_true[:,0]*y_pred[:,1]*G_mdf
-        # print(f'producto_FP:{producto_FP.shape} {producto_FP.dtype} {torch.nanmean(producto_FP)}')
-        producto_FN = y_true[:,1]*y_pred[:,0]*G_mdf
-        # print(f'producto_FN:{producto_FN.shape} {producto_FN.dtype} {torch.nanmean(producto_FN)}')
-        # producto_suma = producto_FP+producto_FN
-        # print(f'producto_suma:{producto_suma.shape} {producto_suma.dtype} {torch.nanmean(producto_suma)}')
-        producto = producto_FP+producto_FN
-        # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)}')
-        
-        # print(f'mascara_dist[0]:{mascara_dist[0].shape}, {mascara_dist[0].sum()}, {mascara_dist[1].sum()}, mascara_dist.dtype:{mascara_dist.dtype}')
-        # print(f'cardinalidades:{cardinalidades.shape} {cardinalidades}')
-        if batch:
-            BL_sumatoria = torch.sum(producto.view(N,-1), 1)
-            BL_cardinalidad = np.prod(producto.shape[1:])
-            # print(f'BL_sumatoria:{BL_sumatoria.shape}, {BL_sumatoria}')
-        else:
-            BL_sumatoria = torch.sum(producto.view(N,-1))
-            BL_cardinalidad = np.prod(producto.shape[:])
-        MD_loss = BL_sumatoria/BL_cardinalidad
-        # print(f'MD_loss ANTES:{MD_loss}')
-        
-        # gdice_loss_cpu = gdice_loss.detach().cpu().numpy()
-        # MD_loss_cpu = MD_loss.cpu().detach().numpy()
-        # print(f'gdice_loss:{gdice_loss_cpu.shape} {np.around(gdice_loss_cpu,4)} mean:{np.around(np.nanmean(gdice_loss_cpu),4)} {np.around(np.nanstd(gdice_loss_cpu),4)}')
-        # print(f'MD_loss:{MD_loss_cpu.shape} {np.around(MD_loss_cpu,4)} mean:{np.around(np.nanmean(MD_loss_cpu),4)} {np.around(np.nanstd(MD_loss_cpu),4)}')
-        
-        # MD_loss[torch.isnan(MD_loss)]=0.0
-        # print(f'MD_loss DESPUES:{MD_loss}')
-        
-        loss = alpha*gdice_loss + (1-alpha)*MD_loss
-        # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        
-        # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-        # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.mean(loss)
-
-class MD_loss_C(nn.Module):
     '''
     - Pondera Y_MDF por parMD_pot
     '''
     def __init__(self):
-        super(MD_loss_C, self).__init__()
+        super(MD_loss, self).__init__()
         
     def forward(self, pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot):
         # print('\nMD_loss_B_new:')
@@ -249,401 +180,11 @@ class MD_loss_C(nn.Module):
         # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
         # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
         return torch.mean(loss)
-    
-# =============================================================================
-#     
-# =============================================================================
-class MD_loss_B(nn.Module):
-    '''
-    - 
-    '''
-    def __init__(self):
-        super(MD_loss_B, self).__init__()
-        
-    def forward(self, pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_sq):
-        # print('\nMD_loss_B_new:')
-        N, C, H, W = Y.shape
-        
-        gdice = Generalized_dice_metric(pred, Y)
-        gdice_loss = 1-gdice
-        
-        array_FP = Y[:,0]*pred[:,1]
-        array_FN = Y[:,1]*pred[:,0]
-        array_FPFN = array_FP+array_FN
-        # print(f'array_FPFN:{array_FPFN.shape} {array_FPFN.get_device()}')
-        producto = array_FPFN * Y_MDF
-        # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)} suma:{torch.sum(producto,axis=(1,2))}')
-        # print(f'ASSD:{ASSD.shape} {ASSD}')
-        
-        sumatoria = torch.sum(producto,axis=(1,2))
-        # print(f'sumatoria:{sumatoria.shape} {sumatoria}')
-        cardinalidad = np.prod(producto.shape[1:])
-        MD_loss = sumatoria/cardinalidad
-        
-        
-        prednp = pred.detach().cpu().numpy()
-        prednp[prednp<=0.5]=0;prednp[prednp>0.5]=1
-        Pnp = prednp[:,1].astype(np.bool_)
-        # Pnp = np.copy(prednp[:,1])
-        Ynp = np.bool_(Y.detach().cpu().numpy())
-        Ynp = Ynp[:,1]
-        Y_MDFnp = Y_MDF.detach().cpu().numpy()
-        Y_MDF_FPFN=np.zeros_like(Y_MDFnp)
-        for n in range(len(Y))[:]:
-            TP_YLesiones, FN_YLesiones, TP_PLesiones, FP_PLesiones = ModuloA.Obtener_MC_Lesiones(Ynp[n], Pnp[n])
-            mask_TP,mask_FP,mask_FN = ModuloA.comparar_CC(TP_YLesiones,TP_PLesiones)
-            OR_FPFN = np.logical_or(mask_FP, mask_FN)
-            OR_FPFN = morphology.dilation(OR_FPFN, morphology.square(width=parMD_sq))
-            Y_MDF_FPFN[n] = Y_MDFnp[n]*OR_FPFN
-        Y_MDF_FPFN = torch.from_numpy(Y_MDF_FPFN)
-        Y_MDF_FPFN = Y_MDF_FPFN.to('cuda')
-        # print(f'Y_MDF_FPFN:{Y_MDF_FPFN.shape} {Y_MDF_FPFN.get_device()}')
-        # print(f'Y_MDF_FPFN:{Y_MDF_FPFN.shape} {Y_MDF_FPFN.sum()} {torch.sum(Y_MDF_FPFN,axis=(1,2))}')
-        
-        producto_term2 = array_FPFN * Y_MDF_FPFN**parMD_pot
-        sumatoria_term2 = torch.sum(producto_term2,axis=(1,2))
-        MD_loss_term2 = sumatoria_term2/cardinalidad
-        # print(f'MD_loss_term2:{MD_loss_term2.shape} {MD_loss_term2} {MD_loss_term2.get_device()}')
-        
-        # print(f'gdice_loss tensor:{gdice_loss.shape} {gdice_loss} {gdice_loss.mean()} {torch.std(gdice_loss,correction=1)}')
-        # print(f'MD_loss tensor:{MD_loss.shape} {MD_loss.get_device()} {MD_loss} {MD_loss.mean()} {torch.std(MD_loss,correction=1)}')
-        # MD_loss[torch.isnan(MD_loss)]=0.0
-        
-        # loss = alpha*gdice_loss + (1-alpha)*MD_loss
-        loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*MD_loss_term2)
-        # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-        # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.mean(loss)
-
-class MD_loss_G(nn.Module):
-    '''
-    - Actualiza Y_MDF con FP y FN utilizando P_MDF
-    '''
-    def __init__(self):
-        super(MD_loss_G, self).__init__()
-        
-        # loss = loss_function(pred, Y, Y_MDF, alpha, parMD_A)
-    def forward(self, pred, Y, alpha, Y_MDF, P_MDF, parMD_weight, parMD_pot, parMD_sq):
-        print('\nMD_loss_G:')
-        N, C, H, W = Y.shape
-        
-        gdice = Generalized_dice_metric(pred, Y)
-        gdice_loss = 1-gdice
-        
-        array_FP = Y[:,0]*pred[:,1]
-        array_FN = Y[:,1]*pred[:,0]
-        array_FPFN = array_FP+array_FN
-        print(f'array_FPFN:{array_FPFN.shape} {array_FPFN.get_device()}')
-        producto = array_FPFN * Y_MDF
-        # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)} suma:{torch.sum(producto,axis=(1,2))}')
-        # print(f'ASSD:{ASSD.shape} {ASSD}')
-        
-        sumatoria = torch.sum(producto,axis=(1,2))
-        # print(f'sumatoria:{sumatoria.shape} {sumatoria}')
-        cardinalidad = np.prod(producto.shape[1:])
-        MD_loss = sumatoria/cardinalidad
-        
-        if P_MDF==None:
-            loss = alpha*gdice_loss + (1-alpha)*MD_loss
-            # loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*MD_loss_term2)
-        else:
-            # Y_MDFnp = Y_MDF.detach().cpu().numpy()
-            P_MDFnp = P_MDF.detach().cpu().numpy()
-            
-            prednp = pred.detach().cpu().numpy()
-            prednp[prednp<=0.5]=0;prednp[prednp>0.5]=1
-            Pnp = prednp[:,1].astype(np.bool_)
-            # Pnp = np.copy(prednp[:,1])
-            Ynp = np.bool_(Y.detach().cpu().numpy())
-            Ynp = Ynp[:,1]
-            PMDF_FPFN=np.zeros_like(P_MDFnp)
-            for n in range(len(Y))[:]: ###
-                if np.isnan(P_MDFnp[n].sum()):
-                    continue
-                TP_YLesiones, FN_YLesiones, TP_PLesiones, FP_PLesiones = ModuloA.Obtener_MC_Lesiones(Ynp[n], Pnp[n])
-                mask_TP,mask_FP,mask_FN = ModuloA.comparar_CC(TP_YLesiones,TP_PLesiones)
-                OR_FPFN = np.logical_or(mask_FP, mask_FN)
-                OR_FPFN = morphology.dilation(OR_FPFN, morphology.square(width=parMD_sq))
-                PMDF_FPFN[n] = P_MDFnp[n]*OR_FPFN
-            PMDF_FPFN = torch.from_numpy(PMDF_FPFN)
-            PMDF_FPFN = PMDF_FPFN.to('cuda')
-            print(f'PMDF_FPFN:{PMDF_FPFN.shape} {PMDF_FPFN.get_device()}')
-            print(f'PMDF_FPFN:{PMDF_FPFN.shape} {PMDF_FPFN.sum()} {torch.sum(PMDF_FPFN,axis=(1,2))}')
-            
-            producto_term2 = array_FPFN * PMDF_FPFN**parMD_pot
-            sumatoria_term2 = torch.sum(producto_term2,axis=(1,2))
-            MD_loss_term2 = sumatoria_term2/cardinalidad#*PMDF_FPFN
-            print(f'MD_loss_term2:{MD_loss_term2.shape} {MD_loss_term2} {MD_loss_term2.get_device()}')
-            
-            # print(f'gdice_loss tensor:{gdice_loss.shape} {gdice_loss} {gdice_loss.mean()} {torch.std(gdice_loss,correction=1)}')
-            print(f'MD_loss tensor:{MD_loss.shape} {MD_loss.get_device()} {MD_loss} {MD_loss.mean()} {torch.std(MD_loss,correction=1)}')
-            # MD_loss[torch.isnan(MD_loss)]=0.0
-            
-            # loss = alpha*gdice_loss + (1-alpha)*MD_loss
-            loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*MD_loss_term2)
-            # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-            # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.mean(loss)
-
-class MD_loss_H(nn.Module):
-    '''
-    - Actualiza Y_MDF con FP y FN utilizando P_MDF
-    '''
-    def __init__(self):
-        super(MD_loss_H, self).__init__()
-        
-        # loss = loss_function(pred, Y, Y_MDF, alpha, parMD_A)
-    def forward(self, pred, Y, alpha, Y_MDF, P_MDF, parMD_weight, parMD_pot, parMD_sq):
-        print('\nMD_loss_H:')
-        N, C, H, W = Y.shape
-        
-        gdice = Generalized_dice_metric(pred, Y)
-        gdice_loss = 1-gdice
-        
-        array_FP = Y[:,0]*pred[:,1]
-        array_FN = Y[:,1]*pred[:,0]
-        array_FPFN = array_FP+array_FN
-        print(f'array_FPFN:{array_FPFN.shape} {array_FPFN.get_device()}')
-        producto = array_FPFN * Y_MDF
-        # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)} suma:{torch.sum(producto,axis=(1,2))}')
-        # print(f'ASSD:{ASSD.shape} {ASSD}')
-        
-        sumatoria = torch.sum(producto,axis=(1,2))
-        # print(f'sumatoria:{sumatoria.shape} {sumatoria}')
-        cardinalidad = np.prod(producto.shape[1:])
-        MD_loss = sumatoria/cardinalidad
-        
-        if P_MDF==None:
-            loss = alpha*gdice_loss + (1-alpha)*MD_loss
-            # loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*MD_loss_term2)
-        else:
-            producto_term2 = array_FPFN * P_MDF**parMD_pot
-            sumatoria_term2 = torch.sum(producto_term2,axis=(1,2))
-            MD_loss_term2 = sumatoria_term2/cardinalidad#*PMDF_FPFN
-            print(f'MD_loss_term2:{MD_loss_term2.shape} {MD_loss_term2} {MD_loss_term2.mean()} {MD_loss_term2.get_device()}')
-            MD_loss_term2[torch.isnan(MD_loss_term2)]=0.0
-            print(f'MD_loss_term2:{MD_loss_term2.shape} {MD_loss_term2} {MD_loss_term2.mean()} {MD_loss_term2.get_device()}')
-            
-            # print(f'gdice_loss tensor:{gdice_loss.shape} {gdice_loss} {gdice_loss.mean()} {torch.std(gdice_loss,correction=1)}')
-            print(f'MD_loss tensor:{MD_loss.shape} {MD_loss} {MD_loss.mean()} {torch.std(MD_loss,correction=1)} {MD_loss.get_device()}')
-            
-            
-            # loss = alpha*gdice_loss + (1-alpha)*MD_loss
-            loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*MD_loss_term2)
-            # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-            # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.mean(loss)
-
-class MD_loss_ASSD(nn.Module):
-    '''
-    - Actualiza Y_MDF con FP y FN utilizando P_MDF
-    '''
-    def __init__(self):
-        super(MD_loss_ASSD, self).__init__()
-        
-        # loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-    def forward(self, pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot):
-        # print('\nDentro de MD_loss_ASSD:')
-        N, C, H, W = Y.shape
-        
-        gdice = Generalized_dice_metric(pred, Y)
-        gdice_loss = 1-gdice
-        
-        array_FP = Y[:,0]*pred[:,1]
-        array_FN = Y[:,1]*pred[:,0]
-        array_FPFN = array_FP+array_FN
-        producto = array_FPFN * Y_MDF
-        # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)} suma:{torch.sum(producto,axis=(1,2))}')
-        # print(f'ASSD:{ASSD.shape} {ASSD}')
-        
-        sumatoria = torch.sum(producto,axis=(1,2))
-        # print(f'sumatoria:{sumatoria.shape} {sumatoria}')
-        cardinalidad = np.prod(producto.shape[1:])
-        MD_loss = sumatoria/cardinalidad
-        
-        Pnp = pred.detach().cpu().numpy()
-        Pnp[Pnp<=0.5]=0;Pnp[Pnp>0.5]=1
-        Pnp = np.bool_(Pnp[:,1])
-        Ynp = Y.detach().cpu().numpy()
-        Ynp = np.bool_(Ynp[:,1])
-        ASSD95np = np.zeros((Ynp.shape[0]),dtype=np.float32)
-        for n in range(len(Y))[:]:
-            if Pnp[n].sum()==0:
-                ASSD95np[n] = np.nan
-            else:
-                d_mb = bbg.Metricas_borde(Ynp[n],Pnp[n],['assd95'])
-                ASSD95np[n] = d_mb['assd95']
-        print(f'ASSD95np:{ASSD95np.shape} {ASSD95np.dtype} {ASSD95np} mean():{ASSD95np.mean()} np.nanmean():{np.nanmean(ASSD95np)}\n')
-        ASSD95np = ASSD95np**parMD_pot
-        print(f'ASSD95np:{ASSD95np.shape} {ASSD95np.dtype} {ASSD95np} mean():{ASSD95np.mean()} np.nanmean():{np.nanmean(ASSD95np)}\n')
-        ASSD95 = torch.from_numpy(ASSD95np)
-        ASSD95 = ASSD95.to('cuda')
-        
-        sumatoria_ASSD = torch.sum(array_FPFN,axis=(1,2))
-        # print(f'sumatoria_ASSD:{sumatoria_ASSD.shape} {sumatoria_ASSD}')
-        ASSD_term = ASSD95**parMD_pot * sumatoria_ASSD/cardinalidad
-        print(f'ASSD_term new:{ASSD_term.shape} {ASSD_term} {torch.nanmean(ASSD_term)}')
-        ASSD_term[torch.isnan(ASSD_term)]=0.0#¿Quitar o dejar en 0?
-        # print(f'ASSD_term new:{ASSD_term.shape} {ASSD_term} {torch.nanmean(ASSD_term)}')
-        
-        # print(f'gdice_loss tensor:{gdice_loss.shape} {gdice_loss} {gdice_loss.mean()} {torch.std(gdice_loss,correction=1)}')
-        print(f'MD_loss tensor:{MD_loss.shape} {MD_loss} {MD_loss.mean()} {torch.std(MD_loss,correction=1)}')
-        # print(f'ASSD_term tensor:{ASSD_term.shape} {ASSD_term} {ASSD_term.mean()} {torch.std(ASSD_term,correction=1)}')
-        
-        # loss = alpha*gdice_loss + (1-alpha)*MD_loss
-        loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*ASSD_term)
-        # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-        # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.nanmean(loss)
-
-class MD_loss_ASSD_mean(nn.Module):#Aqui nueva
-    '''
-    - Actualiza Y_MDF con FP y FN utilizando P_MDF
-    '''
-    def __init__(self):
-        super(MD_loss_ASSD_mean, self).__init__()
-        
-        # loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-    def forward(self, pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot, parMD_quantil):
-        # print('\nDentro de MD_loss_ASSD:')
-        N, C, H, W = Y.shape
-        
-        gdice = Generalized_dice_metric(pred, Y)
-        gdice_loss = 1-gdice
-        
-        array_FP = Y[:,0]*pred[:,1]
-        array_FN = Y[:,1]*pred[:,0]
-        array_FPFN = array_FP+array_FN
-        producto = array_FPFN * Y_MDF
-        # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)} suma:{torch.sum(producto,axis=(1,2))}')
-        # print(f'ASSD:{ASSD.shape} {ASSD}')
-        
-        sumatoria = torch.sum(producto,axis=(1,2))
-        # print(f'sumatoria:{sumatoria.shape} {sumatoria}')
-        cardinalidad = np.prod(producto.shape[1:])
-        MD_loss = sumatoria/cardinalidad
-        
-        
-        Pnp = pred.detach().cpu().numpy()
-        Pnp[Pnp<=0.5]=0;Pnp[Pnp>0.5]=1
-        Pnp = np.bool_(Pnp[:,1])
-        Ynp = Y.detach().cpu().numpy()
-        Ynp = np.bool_(Ynp[:,1])
-        ASSD95np = np.zeros((Ynp.shape[0]),dtype=np.float32)
-        for n in range(len(Y))[:]:
-            if Pnp[n].sum()==0:
-                ASSD95np[n] = np.nan
-            else:
-                d_mb = bbg.Metricas_borde(Ynp[n],Pnp[n],['assd95'])
-                ASSD95np[n] = d_mb['assd95']
-        print(f'ASSD95np:{ASSD95np.shape} {ASSD95np.dtype} {ASSD95np} mean():{ASSD95np.mean()} np.nanmean():{np.nanmean(ASSD95np)}')
-        # ASSD95_mean = np.nanmean(ASSD95np)
-        # print(f'ASSD95_mean:{ASSD95_mean}')
-        ASSD95_mean = np.nanmean(bbg.Truncar_superior(ASSD95np,parMD_quantil))
-        print(f'ASSD95_mean:{ASSD95_mean}')
-        # print(f'ASSD95_mean:{ASSD95_mean}, truncado:{np.nanmean(bbg.Truncar_superior(ASSD95np,1.0))} {np.nanmean(bbg.Truncar_superior(ASSD95np,0.95))}')
-        
-        sumatoria_ASSD = torch.sum(array_FPFN,axis=(1,2))
-        # print(f'sumatoria_ASSD:{sumatoria_ASSD.shape} {sumatoria_ASSD}')
-        ASSD_term = ASSD95_mean**parMD_pot * sumatoria_ASSD/cardinalidad
-        print(f'ASSD_term new:{ASSD_term.shape} {ASSD_term} {torch.nanmean(ASSD_term)}')
-        ASSD_term[torch.isnan(ASSD_term)]=0.0#¿Quitar o dejar en 0?
-        # print(f'ASSD_term new:{ASSD_term.shape} {ASSD_term} {torch.nanmean(ASSD_term)}')
-        
-        # print(f'gdice_loss tensor:{gdice_loss.shape} {gdice_loss} {gdice_loss.mean()} {torch.std(gdice_loss,correction=1)}')
-        print(f'MD_loss tensor:{MD_loss.shape} {MD_loss} {MD_loss.mean()} {torch.std(MD_loss,correction=1)}')
-        # print(f'ASSD_term tensor:{ASSD_term.shape} {ASSD_term} {ASSD_term.mean()} {torch.std(ASSD_term,correction=1)}')
-        
-        # loss = alpha*gdice_loss + (1-alpha)*MD_loss
-        loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*ASSD_term)
-        # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-        # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.nanmean(loss)
-
-# class MD_loss_ASSD_mean(nn.Module):# Original
-#     '''
-#     - Actualiza Y_MDF con FP y FN utilizando P_MDF
-#     '''
-#     def __init__(self):
-#         super(MD_loss_ASSD_mean, self).__init__()
-        
-#         # loss = loss_function(pred, Y, Y_MDF, alpha, ASSD95, parMD_weight)
-#     def forward(self, pred, Y, Y_MDF, alpha, ASSD, parMD_weight):
-#         N, C, H, W = Y.shape
-        
-#         gdice = Generalized_dice_metric(pred, Y)
-#         gdice_loss = 1-gdice
-        
-#         array_FP = Y[:,0]*pred[:,1]
-#         array_FN = Y[:,1]*pred[:,0]
-#         array_FPFN = array_FP+array_FN
-#         producto = array_FPFN * Y_MDF
-#         # print(f'producto:{producto.shape} {producto.dtype} {torch.nanmean(producto)} suma:{torch.sum(producto,axis=(1,2))}')
-#         # print(f'ASSD:{ASSD.shape} {ASSD}')
-        
-#         sumatoria = torch.sum(producto,axis=(1,2))
-#         # print(f'sumatoria:{sumatoria.shape} {sumatoria}')
-#         cardinalidad = np.prod(producto.shape[1:])
-#         MD_loss = sumatoria/cardinalidad
-        
-#         sumatoria_ASSD = torch.sum(array_FPFN,axis=(1,2))
-#         # print(f'sumatoria_ASSD:{sumatoria_ASSD.shape} {sumatoria_ASSD}')
-#         ASSD_term = sumatoria_ASSD/cardinalidad*ASSD
-#         print(f'ASSD_term new:{ASSD_term.shape} {ASSD_term} {torch.nanmean(ASSD_term)}')
-        
-#         # ASSD_term = ASSD_term*ASSD
-#         # print(f'ASSD_term new:{ASSD_term.shape} {ASSD_term} {torch.nanmean(ASSD_term)}')
-#         # torch.sum(array_FPFN,axis=(1,2)
-        
-#         # print(f'gdice_loss tensor:{gdice_loss.shape} {gdice_loss} {gdice_loss.mean()} {torch.std(gdice_loss,correction=1)}')
-#         print(f'MD_loss tensor:{MD_loss.shape} {MD_loss} {MD_loss.mean()} {torch.std(MD_loss,correction=1)}')
-#         # MD_loss[torch.isnan(MD_loss)]=0.0
-        
-#         # loss = alpha*gdice_loss + (1-alpha)*MD_loss
-#         loss = alpha*gdice_loss + (1-alpha)*(MD_loss + parMD_weight*ASSD_term)
-#         # loss = torch.nansum(alpha*gdice_loss + (1-alpha)*MD_loss)
-#         # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-#         return torch.mean(loss)
-
-
 
 
 # =============================================================================
 #     
 # =============================================================================
-class PDF_loss(nn.Module):
-    
-    def __init__(self):
-        super(PDF_loss, self).__init__()
-    
-    def forward(self, y_pred, y_true, G_pdf, alpha, batch=True):
-        # print('Boundary_loss:')
-        # print(f'y_pred:{y_pred.shape}, y_true:{y_true.shape}, G_pdf:{G_pdf.shape}')
-        N, C, H, W = y_true.shape
-        # tn, fp, fn, tp = Matriz_confusion_2MC(y_pred, y_true, batch)
-        # dice = Dice_metric(tn, fp, fn, tp)
-        # dice_loss = 1-dice
-        
-        gdice = Generalized_dice_metric(y_pred, y_true)
-        gdice_loss = 1-gdice
-        
-        producto = y_pred[:,1]*G_pdf
-        if batch:
-            BL_sumatoria = torch.sum(producto.view(N,-1), 1)
-            BL_cardinalidad = np.prod(producto.shape[1:])
-        else:
-            BL_sumatoria = torch.sum(producto.view(N,-1))
-            BL_cardinalidad = np.prod(producto.shape[:])
-        B_loss = BL_sumatoria/BL_cardinalidad
-        
-        gdice_loss_cpu = gdice_loss.detach().cpu().numpy()
-        B_loss_cpu = B_loss.cpu().detach().numpy()
-        print(f'gdice_lc:{gdice_loss_cpu.shape} {np.around(gdice_loss_cpu[:],4)}')
-        print(f'BL_lc:{B_loss_cpu.shape} {np.around(B_loss_cpu[:],4)}, mean:{np.around(B_loss_cpu[:].mean(),4)} std:{np.around(B_loss_cpu[:].std(),4)}')
-        
-        loss = alpha*gdice_loss + (1-alpha)*B_loss
-        # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.mean(loss)
 
 class HD_loss(nn.Module):
     
@@ -678,17 +219,6 @@ class HD_loss(nn.Module):
         # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
         return torch.mean(loss)
 
-class FT_loss(nn.Module):
-    
-    def __init__(self):
-        super(FT_loss, self).__init__()
-
-    def forward(self, y_pred, y_true, alpha_TL, beta_TL, gamma, batch=True):
-        N, C, H, W = y_true.shape
-        tn, fp, fn, tp = Matriz_confusion_2MC(y_pred, y_true, batch)
-        loss = torch.pow(1 - (tp + eps)/(tp + alpha_TL*fp + beta_TL*fn + eps), 1/gamma)
-        # print(f"loss: {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
-        return torch.mean(loss)
     
 # =============================================================================
 # ABL: Active Boundary Loss (2022)
@@ -1439,7 +969,3 @@ class CBL(nn.Module):
         # print(f"dice_loss:{dice_loss.shape} {torch.mean(dice_loss)}, cbl_loss:{cbl_loss.shape} {cbl_loss}, total_loss: {total_loss.shape} {total_loss} torch.mean(total_loss):{torch.mean(total_loss)}")
         
         return torch.mean(total_loss)
-        
-        # # loss = alpha*dice_loss + (1-alpha)*loss# + (curvatura_target - curvatura_pred)**2*gamma + (curvatura_target**3 - curvatura_pred**2)**3*gamma
-        # # print(f"alpha*dice_loss + (1-alpha)*loss: {loss} {loss.shape}")
-        # return total_loss
