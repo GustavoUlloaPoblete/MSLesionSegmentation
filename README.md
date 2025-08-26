@@ -44,8 +44,8 @@ Preprocessed training data sets are required, and for efficiency, it is desirabl
 - ISBI-MS: Publicly available at https://www.kaggle.com/datasets/marwa96/isbi-ms-dataset/data;
 - MSSEG: Publicly available at https://portal.fli-iam.irisa.fr/msseg-challenge/
 
-#### Mini tutorial to generate a Mahalanobis distance map
+#### Tutorial to generate a Mahalanobis distance map
 To learn how to generate a Mahalanobis distance map using a simulated toy image, open the following file in Jupyter Notebook or JupyterLab:
 
-src/tutorial.ipyb
+src/tutorial.ipynb
 
