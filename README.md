@@ -26,6 +26,8 @@ This project requires the following libraries:
 * `sklearn`
 * `skimage`
 * `SimpleITK`
+* `mahotas`
+* `pyfeats`
 * `os`, `sys`, `time`
 
 ### Use and reproduction
@@ -36,7 +38,7 @@ Use the main.py script, where you configure the training parameters such as:
 - servers to be used
 - dataset
 - loss function
-- radiomic characteristics
+- radiomic features
 
 Preprocessed training data sets are required, and for efficiency, it is desirable (but not mandatory) to have the Mahalanobis distance maps already saved on the hard drive.
 
