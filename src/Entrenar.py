@@ -892,11 +892,15 @@ print('input_dim_2D:',input_dim_2D)
 
 print('os.uname()[1]:',os.uname()[1])
 if os.uname()[1] == 'f15':
-    data_path = os.path.join('/media/gustavo/Disco_2/DS_Imagenes/',d['DS'],d['DS']+'_2D_160x192_TN')
-    path_caracteristicas =   '/media/gustavo/Disco_2/DS_Imagenes/{DS}/{DS}_160x160x192_caracteristicas/'.format(DS=d['DS'])
+    # data_path = os.path.join('/media/gustavo/Disco_2/DS_Imagenes/',d['DS'],d['DS']+'_2D_160x192_TN')
+    # path_caracteristicas =   '/media/gustavo/Disco_2/DS_Imagenes/{DS}/{DS}_160x160x192_caracteristicas/'.format(DS=d['DS'])
+    data_path = os.path.join('<here/your/path>',d['DS'],d['DS']+'_2D_160x192_TN')
+    path_caracteristicas =   '<here/your/path>'.format(DS=d['DS'])
 elif '/home' in os.getcwd():
-    data_path = os.path.join('/home/'+os.getlogin()+'/DS_Imagenes/',d['DS'],d['DS']+'_2D_160x192_TN')
-    path_caracteristicas =   '/home/'+os.getlogin()+'/DS_Imagenes/{DS}/{DS}_160x160x192_caracteristicas/'.format(DS=d['DS'])
+    # data_path = os.path.join('/home/'+os.getlogin()+'/DS_Imagenes/',d['DS'],d['DS']+'_2D_160x192_TN')
+    # path_caracteristicas =   '/home/'+os.getlogin()+'/DS_Imagenes/{DS}/{DS}_160x160x192_caracteristicas/'.format(DS=d['DS'])
+    data_path = os.path.join('<here/your/path>',d['DS'],d['DS']+'_2D_160x192_TN')
+    path_caracteristicas =   '<here/your/path>'.format(DS=d['DS'])
 # else: # Vast_ai
 #     path_DSI = os.path.join('/workspace','DS_Imagenes')
 print('data_path:',data_path)
@@ -1036,8 +1040,10 @@ elif d['tarea'] == 'training':
         if flag_cargar_dMDF:
             # p = '/'.join(os.getcwd().split('/')[:-1])
             # dMDF=dict(np.load(os.path.join(p,nombre_dMDF+'.npz')))
-            D2='/media/gustavo/Disco_2/pytorch/2025/MDF_Dinamico/'
+            # D2='/media/gustavo/Disco_2/pytorch/2025/MDF_Dinamico/'
+            D2='<here/your/path>'
             dMDF=dict(np.load(os.path.join(D2,nombre_dMDF+'.npz')))
+            
         else:
             resultados = []
             with ProcessPoolExecutor(max_workers=max_workers) as executor:

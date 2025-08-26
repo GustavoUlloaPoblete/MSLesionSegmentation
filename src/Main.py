@@ -10,7 +10,7 @@ import os
 from time import sleep
 
 # =============================================================================
-# Habilitar entrenamiento, luego testing y envío de carpetas a nodo central
+# Enable training, then testing and sending folders to the central node
 # =============================================================================
 crear_carpetas=False; training=False; testing=False; scp=False; enfriar=False
 # crear_carpetas=True
@@ -19,10 +19,10 @@ if not crear_carpetas:
     testing=True
     scp=True
 
-# enfriar=True
+# enfriar=True # cool down or pause computations
 
 # =============================================================================
-# Indicar servidor, gpu y corridas
+# Indicate server, GPU and runs
 # =============================================================================
 
 # servidor = 'mineria';  gpu='0'; Corridas=['1','2','3','4']
@@ -39,7 +39,7 @@ print(Corridas)
 os.environ["CUDA_VISIBLE_DEVICES"]=gpu
 
 # =============================================================================
-# Parámetros de entrenamiento
+# Training parameters
 # =============================================================================
 tasa_da = '0.0'
 umbral_vol_training = '1'
@@ -51,23 +51,22 @@ mixed_precision = 'T' #;mixed_precision = 'F'
 ES = 'T' #;ES = 'F'#Early-stopping
 
 # =============================================================================
-# Parámetros funciones de pérdida
+# Loss function parameters
 # =============================================================================
-gamma = '1.0' #;gamma = 'nan' # para Focal Tversky loss
-
+gamma = '1.0' #;gamma = 'nan'
 alpha_HD = '2.0' #;alpha_HD = 'nan' # Hausdorff-distance loss
 potencia_assd ='1.0' ;potencia_assd ='nan'
 alpha_TL = '0.3' #;alpha_TL = 'nan'# alpha de Tversky loss
 beta_ASL = '2.0' #;beta_ASL = 'nan'# Asymmetric similarity loss
 w_SEL = '0.1' #;w_SEL = 'nan'# sensitivity-especifity loss
-p_assd = '1.0' ;p_assd = 'nan'# probabilidad para obtener cuantil de assd
-alpha_BS = '0.8' # para Boundary-sensitive loss
+p_assd = '1.0' ;p_assd = 'nan'
+alpha_BS = '0.8' # for Boundary-sensitive loss
 beta_BS_LC = '0.9'
-wa_ABL = '1.0' # para Active boundary loss
+wa_ABL = '1.0' # for Active boundary loss
 batch_loss = 'T' #;batch_loss = 'F'
-gamma_CBL = '2.0' # para Conditional boundary loss
+gamma_CBL = '2.0' # for Conditional boundary loss
 
-umbral_cc = '0' # solo slides con lesiones >0
+umbral_cc = '0' # only slides with number of lesion > 0
 
 parMD_weight = '1.0'
 parMD_pot = '2.0'# lambda parameter in the paper
@@ -79,7 +78,7 @@ start_es = '40'
 patience = '30'
 
 # =============================================================================
-# Ciclo de entrenamiento
+# Training cycle
 # =============================================================================
 # for DS in ['ISBI2015','MSSEG2016']:
 # for DS in ['MSSEG2016','ISBI2015']:
@@ -98,7 +97,7 @@ for DS in ['MSSEG2016']:
             prototipo='prototipo_mediana';gamma_MDF='1.0';percentil='0.9'
             for parMD_weight in ['1.0']:
                 
-                for parMD_pot in ['3.0']:
+                for parMD_pot in ['3.0']:# lambda parameter in the paper
                     # for dist in ['5','10','15']:
                     for dist in ['10']:
                         if DS=='MSSEG2016' and dist=='5' or DS=='ISBI2015' and (dist=='10' or dist=='15'):

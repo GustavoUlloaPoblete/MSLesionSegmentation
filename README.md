@@ -8,8 +8,8 @@ Title of the paper (submitted for peer review):
 Authors:
 
 - Gustavo Ulloa-Poblete, Departamento de Informática, Universidad Técnica Federico Santa María, Valparaíso 2390123, Chile; gustavo.ulloa@usm.cl
-- Alejandro Veloz: School of Biomedical Engineering, Universidad de Valparaíso, Chile; alejandro.veloz@uv.cl
-- Sebastián Sánchez; Departamento de Informática, Universidad Técnica Federico Santa María, Valparaíso 2390123, Chile; sebastian.sanchezl@sansano.usm.cl
+- Alejandro Veloz, School of Biomedical Engineering, Universidad de Valparaíso, Chile; alejandro.veloz@uv.cl
+- Sebastián Sánchez, Departamento de Informática, Universidad Técnica Federico Santa María, Valparaíso 2390123, Chile; sebastian.sanchezl@sansano.usm.cl
 - Héctor Allende, Departamento de Informática, Universidad Técnica Federico Santa María, Valparaíso 2390123, Chile; hallende@inf.utfsm.cl
 
 
@@ -32,7 +32,7 @@ This project requires the following libraries:
 
 ### Use and reproduction
 
-Use the main.py script, where you configure the training parameters such as:
+Use the Main.py script, where you configure the training parameters such as:
 - epochs
 - MDM $\lambda$
 - servers to be used
