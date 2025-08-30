@@ -313,8 +313,6 @@ def Training():
     promedio_val_F1_maximo = 0
     
     for epoca in range(1, epocas+1):
-        if epoca==2:
-            break
         tiempo_epoca = time()
         print(f'\népoca {epoca}',' /', nombre_carpeta_principal,'/',nombre_carpeta_ce,'/ k:',k)
         
