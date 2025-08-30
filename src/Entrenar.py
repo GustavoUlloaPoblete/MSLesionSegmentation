@@ -313,6 +313,8 @@ def Training():
     promedio_val_F1_maximo = 0
     
     for epoca in range(1, epocas+1):
+        if epoca==2:
+            break
         tiempo_epoca = time()
         print(f'\népoca {epoca}',' /', nombre_carpeta_principal,'/',nombre_carpeta_ce,'/ k:',k)
         
@@ -703,7 +705,7 @@ def Training():
 #   Guardar modelo e historial del entrenamiento
 # =============================================================================
     if flag_es:
-        nombre_modelo = 'k'+str(k)+'_'+str(epoca)+'.pth'
+        nombre_modelo_es = 'k'+str(k)+'_'+str(epoca)+'.pth'
         torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo))
     # =========================================================================
     t_fin = time()
@@ -877,12 +879,12 @@ nombre_modelo = 'k'+str(k)+'.pth'
 print('input_dim_2D:',input_dim_2D)
 
 print('os.uname()[1]:',os.uname()[1])
-if os.uname()[1] == 'f15':
+if os.uname()[1] == 'f15':# local
     # data_path = os.path.join('/media/gustavo/Disco_2/DS_Imagenes/',d['DS'],d['DS']+'_2D_160x192_TN')
     # path_caracteristicas =   '/media/gustavo/Disco_2/DS_Imagenes/{DS}/{DS}_160x160x192_caracteristicas/'.format(DS=d['DS'])
     data_path = os.path.join('<here/your/path>',d['DS'],d['DS']+'_2D_160x192_TN')
     path_caracteristicas =   '<here/your/path>'.format(DS=d['DS'])
-elif '/home' in os.getcwd():
+elif '/home' in os.getcwd():# server
     # data_path = os.path.join('/home/'+os.getlogin()+'/DS_Imagenes/',d['DS'],d['DS']+'_2D_160x192_TN')
     # path_caracteristicas =   '/home/'+os.getlogin()+'/DS_Imagenes/{DS}/{DS}_160x160x192_caracteristicas/'.format(DS=d['DS'])
     data_path = os.path.join('<here/your/path>',d['DS'],d['DS']+'_2D_160x192_TN')
