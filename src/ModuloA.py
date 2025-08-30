@@ -806,6 +806,30 @@ def PDF(array_orig, return_indices=False):
         return pdf.astype(np.float32), ind
     return pdf.astype(np.float32)
 
+def DTM(array_orig, return_indices=False):
+    '''
+    input: HxW o NxHxW
+    output: HxW o NxHxW
+    '''
+    if array_orig.sum()==0:
+        return np.ones_like(array_orig)*np.nan
+    array = array_orig.copy()
+    boundaries = find_boundaries(array, mode='inner', connectivity=1)
+    array[boundaries]=False
+    Gin_edt, Gin_ind = ndimage.distance_transform_edt(array, return_indices=True)
+    
+    not_array = np.logical_not(array_orig)
+    Gout_edt, Gout_ind = ndimage.distance_transform_edt(not_array, return_indices=True)
+    
+    dtm = Gout_edt+Gin_edt
+    
+    if return_indices:
+        ind = np.zeros_like(Gin_ind)
+        ind[0] = Gout_ind[0]*not_array + Gin_ind[0]*array_orig
+        ind[1] = Gout_ind[1]*not_array + Gin_ind[1]*array_orig
+        return dtm.astype(np.float32), ind
+    return dtm.astype(np.float32)
+
 def Matriz_caracteristicas_3D(AC,coordenadas_RoI):
     # 'Obtener matriz de N(píxeles) X NC(caraterísticas), para la máscara(RoI)'
     mc = list()

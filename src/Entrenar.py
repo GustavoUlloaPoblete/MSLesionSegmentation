@@ -251,15 +251,13 @@ def Training():
         model = getattr(Modelos,d['red'])(C, 2).to(device)
         
     G_DTM = False; G_SDF = False; GTB=False; CBL=False; MDF=False
-    G_PDF = False
+    G_PDF = False; return_slide = False#borrar
     if nombre_carpeta_ce not in os.listdir(path_carpeta_principal):
         os.mkdir(path_carpeta_ce)
     if d['loss'] == 'HD_loss':
         G_DTM = True
     elif d['loss'] == 'Boundary_loss':
         G_SDF = True
-    elif d['loss'] == 'PDF_loss':
-        G_PDF = True
     elif d['loss'] == 'ABL':
         GTB = True
     elif d['loss'] == 'CBL':
@@ -315,7 +313,6 @@ def Training():
     promedio_val_F1_maximo = 0
     
     for epoca in range(1, epocas+1):
-        
         tiempo_epoca = time()
         print(f'\népoca {epoca}',' /', nombre_carpeta_principal,'/',nombre_carpeta_ce,'/ k:',k)
         
@@ -336,9 +333,6 @@ def Training():
             elif d['loss'] == 'Boundary_loss':
                 X, Y, Y_SDF = tensores
                 Y_SDF = Y_SDF.to(device)
-            elif d['loss'] == 'PDF_loss':
-                X, Y, Y_PDF = tensores
-                Y_PDF = Y_PDF.to(device)
             elif d['loss'] == 'ABL':
                 X, Y, GTB = tensores
                 GTB = GTB.to(device)
@@ -351,38 +345,36 @@ def Training():
             else: # Dice, FTL, ASD, BCE, ... que solo necesitan entrada X y target Y
                 X, Y = tensores
             X, Y = X.to(device), Y.to(device)
-            if True:
-                with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                    # print(f'with: X:{X.shape}, Y:{Y.shape}')
-                    if d['loss'] == 'CBL':
-                        pred, bottle_neck, last_conv = model(X)
-                        # print(f'pred:{pred.shape}, bottle_neck:{bottle_neck.shape} {bottle_neck.dtype}')#', last_conv:{last_conv.shape}')
-                    else:
-                        pred = model(X)
-                    if d['loss'] == 'HD_loss':
-                        pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
-                        pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
-                        loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
-                    elif d['loss'] == 'Boundary_loss':
-                        loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
-                    elif d['loss'] == 'PDF_loss':
-                        loss = loss_function(pred, Y, Y_PDF, alpha, batch_loss)# para PDF_loss
-                    elif d['loss'] == 'ABL':
-                        loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
-                    elif d['loss'] == 'BSLoss':
-                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
-                    elif d['loss'] == 'BSL_LC':
-                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
-                    elif d['loss'] == 'FT_loss':
-                        loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
-                    elif d['loss'] == 'CBL':
-                        loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
-                    
-                    elif d['loss']=='MD_loss':
-                        loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                    
-                    else: # Dice, FTL, ASD, BCE, GDL,...
-                        loss = loss_function(pred, Y, batch_loss)
+            
+            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
+                # print(f'with: X:{X.shape}, Y:{Y.shape}')
+                if d['loss'] == 'CBL':
+                    pred, bottle_neck, last_conv = model(X)
+                    # print(f'pred:{pred.shape}, bottle_neck:{bottle_neck.shape} {bottle_neck.dtype}')#', last_conv:{last_conv.shape}')
+                else:
+                    pred = model(X)
+                if d['loss'] == 'HD_loss':
+                    pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
+                    pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
+                    loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
+                elif d['loss'] == 'Boundary_loss':
+                    loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
+                elif d['loss'] == 'ABL':
+                    loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
+                elif d['loss'] == 'BSLoss':
+                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
+                elif d['loss'] == 'BSL_LC':
+                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
+                elif d['loss'] == 'FT_loss':
+                    loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
+                elif d['loss'] == 'CBL':
+                    loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
+                
+                elif d['loss']=='MD_loss':
+                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
+                
+                else: # Dice, FTL, ASD, BCE, GDL,...
+                    loss = loss_function(pred, Y, batch_loss)
             
             
             # break
@@ -423,8 +415,6 @@ def Training():
         model.eval()
         lista_loss_val = []
         lista_dice_val = []
-        # for oo in range(1):
-        #     tensores = next(iter(val_dataloader))
         for tensores in val_dataloader:
             if d['loss'] == 'HD_loss':
                 X, Y, Y_DTM = tensores
@@ -445,35 +435,34 @@ def Training():
                 X, Y = tensores
             X, Y = X.to(device), Y.to(device)
             
-            if True:
-                with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                    if d['loss'] == 'CBL':
-                        pred, bottle_neck, last_conv = model(X)
-                    else:
-                        pred = model(X)
-                    
-                    if d['loss'] == 'HD_loss':
-                        pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
-                        pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
-                        loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
-                    elif d['loss'] == 'Boundary_loss':
-                        loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
-                    elif d['loss'] == 'ABL':
-                        loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
-                    elif d['loss'] == 'BSLoss':
-                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
-                    elif d['loss'] == 'BSL_LC':
-                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
-                    elif d['loss'] == 'FT_loss':
-                        loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
-                    elif d['loss'] == 'CBL':
-                        loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
-                    
-                    elif d['loss']=='MD_loss':
-                        loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                    
-                    else: # Dice, FTL, ASD, BCE, GDL,...
-                        loss = loss_function(pred, Y, batch_loss)
+            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
+                if d['loss'] == 'CBL':
+                    pred, bottle_neck, last_conv = model(X)
+                else:
+                    pred = model(X)
+                
+                if d['loss'] == 'HD_loss':
+                    pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
+                    pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
+                    loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
+                elif d['loss'] == 'Boundary_loss':
+                    loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
+                elif d['loss'] == 'ABL':
+                    loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
+                elif d['loss'] == 'BSLoss':
+                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
+                elif d['loss'] == 'BSL_LC':
+                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
+                elif d['loss'] == 'FT_loss':
+                    loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
+                elif d['loss'] == 'CBL':
+                    loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
+                
+                elif d['loss']=='MD_loss':
+                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
+                
+                else: # Dice, FTL, ASD, BCE, GDL,...
+                    loss = loss_function(pred, Y, batch_loss)
 
             
             lista_loss_val.append(loss.item())
@@ -559,8 +548,6 @@ def Training():
         model.eval()
         lista_loss_val = []
         lista_dice_val = []
-        # for oo in range(1):
-        #     tensores = next(iter(test_dataloader))
         for tensores in test_dataloader:
             if d['loss'] == 'HD_loss':
                 X, Y, Y_DTM = tensores
@@ -581,35 +568,34 @@ def Training():
                 X, Y = tensores
             X, Y = X.to(device), Y.to(device)
             
-            if True:
-                with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
-                    if d['loss'] == 'CBL':
-                        pred, bottle_neck, last_conv = model(X)
-                    else:
-                        pred = model(X)
-                    
-                    if d['loss'] == 'HD_loss':
-                        pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
-                        pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
-                        loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
-                    elif d['loss'] == 'Boundary_loss':
-                        loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
-                    elif d['loss'] == 'ABL':
-                        loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
-                    elif d['loss'] == 'BSLoss':
-                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
-                    elif d['loss'] == 'BSL_LC':
-                        loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
-                    elif d['loss'] == 'FT_loss':
-                        loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
-                    elif d['loss'] == 'CBL':
-                        loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
-                    
-                    elif d['loss']=='MD_loss':
-                        loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
-                    
-                    else: # Dice, FTL, ASD, BCE, GDL,...
-                        loss = loss_function(pred, Y, batch_loss)
+            with torch.autocast(device_type=device, dtype=torch.float16, enabled=use_amp): # mixed precision
+                if d['loss'] == 'CBL':
+                    pred, bottle_neck, last_conv = model(X)
+                else:
+                    pred = model(X)
+                
+                if d['loss'] == 'HD_loss':
+                    pred_DTM = bbg.DTM_2D(pred[:,1].detach().cpu().numpy())# procesa cada una de las N=batch_size slides
+                    pred_DTM = torch.from_numpy(pred_DTM); pred_DTM = pred_DTM.to(device)
+                    loss = loss_function(pred, Y, Y_DTM, pred_DTM, alpha, batch_loss)# para HD_loss
+                elif d['loss'] == 'Boundary_loss':
+                    loss = loss_function(pred, Y, Y_SDF, alpha, batch_loss)# para Boundary_loss
+                elif d['loss'] == 'ABL':
+                    loss = loss_function(pred, GTB, Y, alpha, wa_ABL)# para ABL
+                elif d['loss'] == 'BSLoss':
+                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS)# para BSLoss
+                elif d['loss'] == 'BSL_LC':
+                    loss = loss_function(torch.unsqueeze(pred[:,1],1), torch.unsqueeze(Y[:,1],1), alpha_BS, beta_BS_LC)# para BSL_LC
+                elif d['loss'] == 'FT_loss':
+                    loss = loss_function(pred, Y, alpha_TL, beta_TL, gamma, batch_loss)# para Focal tversky loss
+                elif d['loss'] == 'CBL':
+                    loss = loss_function(pred, Y, CBL, bottle_neck, last_conv, alpha, batch_loss, gamma_CBL)# para CBL
+                
+                elif d['loss']=='MD_loss':
+                    loss = loss_function(pred, Y, alpha, Y_MDF, parMD_weight, parMD_pot)
+                
+                else: # Dice, FTL, ASD, BCE, GDL,...
+                    loss = loss_function(pred, Y, batch_loss)
             
             
             lista_loss_val.append(loss.item())
@@ -704,6 +690,7 @@ def Training():
                 print('Terminar entrenamiento--'*10)
                 # nombre_modelo_es = 'k'+str(k)+'_'+str(epoca)+'.pth'
                 nombre_modelo_es = 'k'+str(k)+'_es_'+str(epoca)+'.pth'
+                # nombre_modelo = nombre_modelo_es
                 torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo_es))
                 flag_es = False
                 break
@@ -715,7 +702,9 @@ def Training():
 # =============================================================================
 #   Guardar modelo e historial del entrenamiento
 # =============================================================================
-    torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo))
+    if flag_es:
+        nombre_modelo = 'k'+str(k)+'_'+str(epoca)+'.pth'
+        torch.save(model, os.path.join(path_carpeta_ce,nombre_modelo))
     # =========================================================================
     t_fin = time()
     # print('d_epocas:',d_epocas)
@@ -983,7 +972,7 @@ elif 'MD_loss' in d['loss']:
         string_loss = d['loss']+'_w'+str(parMD_weight)+'p'+str(parMD_pot)+'-'+carpeta_MDF[4:]+'-'
     else:
         string_loss = d['loss']+'-'+carpeta_MDF[4:]+'-'
-else: # BCE, Dice, Boundary loss, ABl, CBL, PDF_loss
+else: # BCE, Dice, Boundary loss, ABl, CBL
     string_loss = d['loss']
 string_loss +='_bm'+d['batch_loss']
 
@@ -1037,6 +1026,7 @@ elif d['tarea'] == 'training':
         if flag_cargar_dMDF:
             # p = '/'.join(os.getcwd().split('/')[:-1])
             # dMDF=dict(np.load(os.path.join(p,nombre_dMDF+'.npz')))
+            
             # D2='/media/gustavo/Disco_2/pytorch/2025/MDF_Dinamico/'
             D2='<here/your/path>'
             dMDF=dict(np.load(os.path.join(D2,nombre_dMDF+'.npz')))

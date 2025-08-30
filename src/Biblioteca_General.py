@@ -252,13 +252,23 @@ def Dice_metric(G, P):# un ejemplo a la vez, sin batch!
 # =============================================================================
 # Mapas de transformación de distancias
 # =============================================================================
-def DTM(array_orig,mode='inner'):
+def DTM_inner(array_orig,mode='inner'):
     array=array_orig.copy()
     if mode=='inner':
         IA_boundaries = find_boundaries(array, mode=mode, connectivity=1)
         array[IA_boundaries]=0
     G_in = ndimage.distance_transform_edt(array).astype(numpy.float32)
     return G_in
+
+def DTM(array_orig,mode='inner'):
+    G_in = DTM_inner(array_orig,mode)
+    array = array_orig.copy()
+    if mode=='outer':
+        IA_boundaries = find_boundaries(array, mode=mode, connectivity=1)
+        array[IA_boundaries]=1
+    not_array = numpy.logical_not(array)
+    G_out = ndimage.distance_transform_edt(not_array).astype(numpy.float32)
+    return G_out+G_in
 
 def DTM_2D(array_orig,mode='inner'):#Retorna DTM de cada elemento (array 2D) del eje 0
     array=array_orig.copy()
@@ -268,7 +278,7 @@ def DTM_2D(array_orig,mode='inner'):#Retorna DTM de cada elemento (array 2D) del
     return array_DTM_2D
 
 def SDF(array_orig,mode='inner'):
-    G_in = DTM(array_orig,mode)
+    G_in = DTM_inner(array_orig,mode)
     array = array_orig.copy()
     if mode=='outer':
         IA_boundaries = find_boundaries(array, mode=mode, connectivity=1)
@@ -277,27 +287,27 @@ def SDF(array_orig,mode='inner'):
     G_out = ndimage.distance_transform_edt(not_array).astype(numpy.float32)
     return G_out-G_in
 
-def SDF_2D(array_orig,mode='inner'):#Retorna DTM de cada elemento (array 2D) del eje 0
+def SDF_2D(array_orig,mode='inner'):
     array=array_orig.copy()
     array_SDF_2D = numpy.zeros(array.shape,dtype=numpy.float32)
     for n in range(array_SDF_2D.shape[0]):
         array_SDF_2D[n] = SDF(array[n].astype(numpy.int8),mode)
     return array_SDF_2D
 
-def PDF(array_orig,mode='inner'):
-    G_in = DTM(array_orig,mode)
-    array = array_orig.copy()
-    if mode=='outer':
-        IA_boundaries = find_boundaries(array, mode=mode, connectivity=1)
-        array[IA_boundaries]=1
-    not_array = numpy.logical_not(array)
-    G_out = ndimage.distance_transform_edt(not_array).astype(numpy.float32)
-    return G_out+G_in
+# def PDF(array_orig,mode='inner'):
+#     G_in = DTM(array_orig,mode)
+#     array = array_orig.copy()
+#     if mode=='outer':
+#         IA_boundaries = find_boundaries(array, mode=mode, connectivity=1)
+#         array[IA_boundaries]=1
+#     not_array = numpy.logical_not(array)
+#     G_out = ndimage.distance_transform_edt(not_array).astype(numpy.float32)
+#     return G_out+G_in
 
-def PDF_TS(array_orig,p,mode='inner'):
-    pdf = PDF(array_orig)
-    pdf_TS = Truncar_superior(pdf,p)
-    return pdf_TS
+# def PDF_TS(array_orig,p,mode='inner'):
+#     pdf = PDF(array_orig)
+#     pdf_TS = Truncar_superior(pdf,p)
+#     return pdf_TS
     
 # =============================================================================
 # Para Cross-Validation

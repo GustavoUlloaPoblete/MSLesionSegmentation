@@ -210,10 +210,10 @@ class HD_loss(nn.Module):
             HD_cardinalidad = np.prod(interior_sumatoria.shape[:])
             hd_loss = torch.sum(interior_sumatoria.view(N,-1))/HD_cardinalidad
 
-        gdice_loss_cpu = gdice_loss.detach().cpu().numpy()
-        hd_loss_cpu = hd_loss.cpu().detach().numpy()
-        print(f'gdice_lc:{gdice_loss_cpu.shape} {np.around(gdice_loss_cpu[:],4)}')
-        print(f'hd_loss:{hd_loss_cpu.shape} {np.around(hd_loss_cpu[:],4)}')
+        # gdice_loss_cpu = gdice_loss.detach().cpu().numpy()
+        # hd_loss_cpu = hd_loss.cpu().detach().numpy()
+        # print(f'gdice_lc:{gdice_loss_cpu.shape} {np.around(gdice_loss_cpu[:],4)}')
+        # print(f'hd_loss:{hd_loss_cpu.shape} {np.around(hd_loss_cpu[:],4)}')
         
         loss = alpha*gdice_loss + (1-alpha)*hd_loss
         # print(f"loss: {loss} {loss.shape}, torch.mean(loss):{torch.mean(loss)} {loss.dtype}")
