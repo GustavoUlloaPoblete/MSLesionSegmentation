@@ -4,7 +4,8 @@ https://github.com/GustavoUlloaPoblete/MSLesionSegmentation
 Title of the paper (accepted :):
 
 **"MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesion Using a Novel Mahalanobis Distance Map"**
-https://www.mdpi.com/2076-3417/15/19/10629
+
+[https://www.mdpi.com/2076-3417/15/19/10629](https://doi.org/10.3390/app151910629)
 
 Authors:
 
@@ -53,14 +54,5 @@ To learn how to generate a Mahalanobis distance map using a simulated toy image,
 src/tutorial.ipynb
 
 #### Cite
-MDPI and ACS Style
-Ulloa-Poblete, G.; Veloz, A.; Sánchez, S.; Allende, H. MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesions Using a Novel Mahalanobis Distance Map. Appl. Sci. 2025, 15, 10629. https://doi.org/10.3390/app151910629
-
-AMA Style
-Ulloa-Poblete G, Veloz A, Sánchez S, Allende H. MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesions Using a Novel Mahalanobis Distance Map. Applied Sciences. 2025; 15(19):10629. https://doi.org/10.3390/app151910629
-
-Chicago/Turabian Style
-Ulloa-Poblete, Gustavo, Alejandro Veloz, Sebastián Sánchez, and Héctor Allende. 2025. "MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesions Using a Novel Mahalanobis Distance Map" Applied Sciences 15, no. 19: 10629. https://doi.org/10.3390/app151910629
-
 APA Style
 Ulloa-Poblete, G., Veloz, A., Sánchez, S., & Allende, H. (2025). MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesions Using a Novel Mahalanobis Distance Map. Applied Sciences, 15(19), 10629. https://doi.org/10.3390/app151910629
