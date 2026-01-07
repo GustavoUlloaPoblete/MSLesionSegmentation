@@ -1,5 +1,5 @@
 # MSLesionSegmentation
-https://github.com/GustavoUlloaPoblete/MSLesionSegmentation
+<!-- https://github.com/GustavoUlloaPoblete/MSLesionSegmentation -->
 
 Paper:
 
