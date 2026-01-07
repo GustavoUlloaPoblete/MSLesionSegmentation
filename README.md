@@ -18,7 +18,7 @@ Ulloa-Poblete, G., Veloz, A., Sánchez, S., & Allende, H. (2025). **MRI Boundary
 
 
 
-[https://www.mdpi.com/2076-3417/15/19/10629](https://doi.org/10.3390/app151910629)
+<!-- [https://www.mdpi.com/2076-3417/15/19/10629](https://doi.org/10.3390/app151910629) -->
 
 Authors:
 
