@@ -1,9 +1,21 @@
 # MSLesionSegmentation
 https://github.com/GustavoUlloaPoblete/MSLesionSegmentation
 
-Title of the paper (submitted for peer review):
+Paper:
 
-**"MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesion Using a Novel Mahalanobis Distance Map"**
+<!-- **"MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesion Using a Novel Mahalanobis Distance Map"**
+
+[https://www.mdpi.com/2076-3417/15/19/10629](https://doi.org/10.3390/app151910629)
+
+
+**[MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesions Using a Novel Mahalanobis Distance Map](https://doi.org/10.3390/app151910629)** Ulloa-Poblete, G., Veloz, A., Sánchez, S., & Allende, H. (2025). *Applied Sciences*, 15(19), 10629.
+
+Ulloa-Poblete, G., et al. (2025). MRI Boundary-Aware Segmentation... *Applied Sciences*.  
+[[PDF]](https://www.mdpi.com/2076-3417/15/19/10629/pdf) [[Online]](https://doi.org/10.3390/app151910629) -->
+
+<!-- Ulloa-Poblete, G., Veloz, A., et al. (2025).  -->
+Ulloa-Poblete, G., Veloz, A., Sánchez, S., & Allende, H. (2025). **MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesion Using a Novel Mahalanobis Distance Map**. Applied Sciences, 15(19), [![DOI](https://img.shields.io/badge/DOI-10.3390%2Fapp151910629-blue)](https://doi.org/10.3390/app151910629) [![Open Access](https://img.shields.io/badge/Open_Access-PDF-green)](https://www.mdpi.com/2076-3417/15/19/10629/pdf)
+
 
 Authors:
 
@@ -16,6 +28,16 @@ Authors:
 **Brief explanation of the paper submitted for peer review (different from the abstract):**
 
 In this work, we address the challenging task of accurately segmenting multiple sclerosis (MS) lesions in MRIs. We propose a new Mahalanobis distance loss function for Convolutional neural networks (CNN). Unlike traditional loss functions, this loss function also incorporates texture information from the neighborhood of boundary pixels. To achieve this, we introduce the Mahalanobis distance map (MDM). Unlike traditional DTM and SDF maps used in current loss functions, the MDM also considers radiomic texture features. This allows to CNN, especifically U-Net to better identify those tricky, ambiguous lesion boundaries, mimicking how a human expert would think. The results are highly promising, showing our method outperforms existing approaches in both overall accuracy and boundary quality.
+
+### General workflow of Mahalanobis distance map algorithm
+
+<img src="Algoritmo1_MDM.png" width="300" />
+
+<!-- ![Gráfico de resultados](Algoritmo1_MDM_español.png) -->
+
+### Multiple sclerosis lesion segmentation pipeline
+
+<img src="Esquema_General.png" width="500" />
 
 ### Dependencies
 
@@ -51,3 +73,6 @@ To learn how to generate a Mahalanobis distance map using a simulated toy image,
 
 src/tutorial.ipynb
 
+<!-- #### Cite (APA Style)
+
+Ulloa-Poblete, G., Veloz, A., Sánchez, S., & Allende, H. (2025). MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesions Using a Novel Mahalanobis Distance Map. Applied Sciences, 15(19), 10629. https://doi.org/10.3390/app151910629 -->
