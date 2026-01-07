@@ -16,8 +16,6 @@ Ulloa-Poblete, G., et al. (2025). MRI Boundary-Aware Segmentation... *Applied Sc
 <!-- Ulloa-Poblete, G., Veloz, A., et al. (2025).  -->
 Ulloa-Poblete, G., Veloz, A., Sánchez, S., & Allende, H. (2025). **MRI Boundary-Aware Segmentation of Multiple Sclerosis Lesion Using a Novel Mahalanobis Distance Map**. Applied Sciences, 15(19), [![DOI](https://img.shields.io/badge/DOI-10.3390%2Fapp151910629-blue)](https://doi.org/10.3390/app151910629) [![Open Access](https://img.shields.io/badge/Open_Access-PDF-green)](https://www.mdpi.com/2076-3417/15/19/10629/pdf)
 
-Title of the paper (accepted :):
-
 
 
 [https://www.mdpi.com/2076-3417/15/19/10629](https://doi.org/10.3390/app151910629)
